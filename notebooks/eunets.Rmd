@@ -10,6 +10,8 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(ggplot2)
+library(ggrepel)
 library(janitor)
 library(countrycode)
 library(igraph)
@@ -83,23 +85,60 @@ g_collab <- collab %>%
   filter(country %in% country_sel) %>%
   df2graph()
 
-par(mar = c(0, 0, 0, 0))
 vertex_size <- igraph::strength(g_collab)
-# remove self-loops
-g <- igraph::simplify(g_collab)
+g <- igraph::simplify(g_collab) # remove self-loops
 edge_weight <- igraph::E(g)$weight
 lout <- igraph::layout_with_fr(g, weights = edge_weight)
-igraph::E(g)$width <- 20 * scale_by(edge_weight)
-igraph::V(g)$size <- 12 * scale_by(vertex_size)
-igraph::E(g)$color <- rgb(.2, .2, .2, scale_by(edge_weight))
-igraph::V(g)$color <- rgb(63, 114, 175, 200, maxColorValue = 255)
-# plot(g, layout = lout, vertex.label = NA)
-# text(lout, labels = names(igraph::V(g)), pos = 2)
+colnames(lout) <- c("x", "y")
+vdf <- lout %>% 
+  as_tibble() %>%
+  mutate(
+    country = names(igraph::V(g)),
+    weight = vertex_size,
+    s = sqrt(weight / 100)
+  )
 
-# TODO: 
-# https://chrischizinski.github.io/rstats/igraph-ggplotll/
-# https://github.com/thomasp85/ggraph
-# https://github.com/thomasp85/tidygraph
+edf <- 
+  g %>%
+  get.data.frame() %>%
+  as_tibble() %>%
+  left_join(select(vdf, x:country), by = c("from" = "country")) %>%
+  rename(from_x = x, from_y = y) %>%
+  left_join(select(vdf, x:country), by = c("to" = "country")) %>%
+  rename(to_x = x, to_y = y) %>%
+  mutate(s = (weight / 1000)^2) %>%
+  filter(s > 1) %>%
+  arrange(s)
+
+ggplot() +
+  geom_segment(data = edf,
+               aes(
+                 x = from_x,
+                 xend = to_x,
+                 y = from_y,
+                 yend = to_y,
+                 size = s,
+                 colour = s
+               )) +
+  scale_color_gradient(low = "gray95", high = "gray50") + 
+  geom_point(data = vdf,
+             aes(x, y, size = s),
+             colour = "gray50") +
+  geom_text_repel(data = vdf, aes(x, y, label = country),
+                  bg.color = "white",
+                  bg.r = 0.15) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()
+  )
 
 ```
 
