@@ -1,0 +1,114 @@
+---
+title: "EU Research Collaboration Networks"
+author: "Joao Martins"
+date: "12/2/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(countrycode)
+library(igraph)
+library(here)
+library(conflicted)
+source(here::here("R", "global.R"))
+conflict_prefer("filter", "dplyr")
+
+df <- 
+  here("data-raw", "cordis-h2020projects.csv") %>%
+  read_csv2() %>% 
+  clean_names()
+```
+
+## Intro
+
+## Data
+
+See `README.md`
+
+
+```{r cars}
+collab <- 
+  df %>%
+  select(id,
+         coordinator_country,
+         participant_countries)
+
+## Q: coordinator_country always in list of participant_countries?
+if (FALSE) {
+collab %>%
+  mutate(test = str_detect(participant_countries, coordinator_country)) %>%
+  summarise(all(test))
+  
+} # A: No. Add them to the list of participant countries.
+    
+collab <- collab %>% 
+  unite(country, 
+        c("coordinator_country", "participant_countries"), 
+        sep = ";", 
+        na.rm = TRUE) %>%
+  mutate(country = str_split(country, ";")) %>%
+  unnest(country) %>%
+  filter(country != "NA")
+
+ncountries_pproj <- collab %>% count(id)
+
+country_stats <- collab %>% 
+  count(country, sort = TRUE)
+
+country_stats <- country_stats %>%
+  mutate(
+    iso2c = countrycode(country, "eurostat", "iso2c", nomatch = NA_character_),
+    eu28 = countrycode(iso2c, "iso2c", "eu28", nomatch = "Non-EU")
+  )
+
+assoc <- c("CH", "NO", "IL", "TR")
+country_sel <- 
+  country_stats %>%
+  filter(eu28 == "EU") %>%
+  pull(country) %>%
+  c(assoc)
+  
+year_table <- df %>% 
+  select(id, year = start_date) %>%
+  mutate(year = str_sub(year, 1, 4)) %>%
+  arrange(id)
+
+g_collab <- collab %>% 
+  # semi_join(filter(year_table, year == "2015"), by = "id") %>%
+  filter(country %in% country_sel) %>%
+  df2graph()
+
+par(mar = c(0, 0, 0, 0))
+vertex_size <- igraph::strength(g_collab)
+# remove self-loops
+g <- igraph::simplify(g_collab)
+edge_weight <- igraph::E(g)$weight
+lout <- igraph::layout_with_fr(g, weights = edge_weight)
+igraph::E(g)$width <- 20 * scale_by(edge_weight)
+igraph::V(g)$size <- 12 * scale_by(vertex_size)
+igraph::E(g)$color <- rgb(.2, .2, .2, scale_by(edge_weight))
+igraph::V(g)$color <- rgb(63, 114, 175, 200, maxColorValue = 255)
+# plot(g, layout = lout, vertex.label = NA)
+# text(lout, labels = names(igraph::V(g)), pos = 2)
+
+# TODO: 
+# https://chrischizinski.github.io/rstats/igraph-ggplotll/
+# https://github.com/thomasp85/ggraph
+# https://github.com/thomasp85/tidygraph
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
