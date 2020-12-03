@@ -1,8 +1,17 @@
 ---
 title: "EU Research Collaboration Networks"
 author: "Joao Martins"
-date: "12/2/2020"
-output: html_document
+knit: (function(inputFile, encoding) { 
+      rmarkdown::render(inputFile,
+                        encoding=encoding, 
+                        output_file=here::here('docs', 'index.html')) })
+output:
+  html_document:
+    toc: true
+    theme: united
+    highlight: breezedark
+    toc_float: true
+    df_print: paged
 editor_options: 
   chunk_output_type: console
 ---
@@ -16,6 +25,7 @@ library(janitor)
 library(countrycode)
 library(igraph)
 library(here)
+library(knitr)
 library(conflicted)
 source(here::here("R", "global.R"))
 conflict_prefer("filter", "dplyr")
@@ -26,40 +36,52 @@ df <-
   clean_names()
 ```
 
-## Intro
-
-## Data
+# Data
 
 See `README.md`
 
+# Goal
 
-```{r cars}
-collab <- 
+Try reproducing the following figure:
+
+![doi: 10.1038/d41586-019-01566-z](https://media.nature.com/lw800/magazine-assets/d41586-019-01566-z/d41586-019-01566-z_16737728.png)
+
+
+# Data Preparation
+
+```{r reprod, message=FALSE, warning=FALSE}
+
+collab <-
   df %>%
   select(id,
          coordinator_country,
          participant_countries)
 
 ## Q: coordinator_country always in list of participant_countries?
-if (FALSE) {
-collab %>%
-  mutate(test = str_detect(participant_countries, coordinator_country)) %>%
-  summarise(all(test))
-  
-} # A: No. Add them to the list of participant countries.
-    
-collab <- collab %>% 
-  unite(country, 
-        c("coordinator_country", "participant_countries"), 
-        sep = ";", 
-        na.rm = TRUE) %>%
+# A: No. Add them to the list of participant countries.
+# mutate(test = str_detect(participant_countries, coordinator_country)) %>%
+# summarise(all(test))
+
+
+collab <- collab %>%
+  unite(
+    country,
+    c("coordinator_country", "participant_countries"),
+    sep = ";",
+    na.rm = TRUE
+  ) %>%
   mutate(country = str_split(country, ";")) %>%
   unnest(country) %>%
   filter(country != "NA")
 
-ncountries_pproj <- collab %>% count(id)
+ncountries_pproj <- collab %>%
+  count(id)
 
-country_stats <- collab %>% 
+# keep projects with only one country
+collab <- collab %>%
+  semi_join(filter(ncountries_pproj, n > 1), by = "id")
+
+country_stats <- collab %>%
   count(country, sort = TRUE)
 
 country_stats <- country_stats %>%
@@ -69,18 +91,27 @@ country_stats <- country_stats %>%
   )
 
 assoc <- c("CH", "NO", "IL", "TR")
-country_sel <- 
+country_sel <-
   country_stats %>%
   filter(eu28 == "EU") %>%
   pull(country) %>%
   c(assoc)
-  
-year_table <- df %>% 
+
+year_table <- df %>%
   select(id, year = start_date) %>%
   mutate(year = str_sub(year, 1, 4)) %>%
   arrange(id)
 
-g_collab <- collab %>% 
+country_stats %>%
+  head() %>%
+  kable()
+```
+
+# Horizon 2020 network
+
+```{r network, fig.width=8, fig.height=8, message=FALSE, warning=FALSE}
+
+g_collab <- collab %>%
   # semi_join(filter(year_table, year == "2015"), by = "id") %>%
   filter(country %in% country_sel) %>%
   df2graph()
@@ -88,26 +119,51 @@ g_collab <- collab %>%
 vertex_size <- igraph::strength(g_collab)
 g <- igraph::simplify(g_collab) # remove self-loops
 edge_weight <- igraph::E(g)$weight
-lout <- igraph::layout_with_fr(g, weights = edge_weight)
+lout <- igraph::layout_with_fr(g, weights = sqrt(edge_weight))
+
+
 colnames(lout) <- c("x", "y")
-vdf <- lout %>% 
+
+vdf <- lout %>%
   as_tibble() %>%
   mutate(
     country = names(igraph::V(g)),
     weight = vertex_size,
-    s = sqrt(weight / 100)
+    s = weight / 100,
+    eu28 = countrycode(country, "eurostat", "eu28", nomatch = "Non-EU"),
+    country_name = countrycode(country, "eurostat", "country.name")
   )
 
-edf <- 
-  g %>%
+
+# create separate rules to improve network representation
+edf_all <- g %>%
   get.data.frame() %>%
   as_tibble() %>%
   left_join(select(vdf, x:country), by = c("from" = "country")) %>%
   rename(from_x = x, from_y = y) %>%
   left_join(select(vdf, x:country), by = c("to" = "country")) %>%
   rename(to_x = x, to_y = y) %>%
-  mutate(s = (weight / 1000)^2) %>%
-  filter(s > 1) %>%
+  mutate(s = (weight / 1000) ^ 2.5)
+
+threshold <- .5
+edf_multiple <- edf_all %>%
+  filter(s > threshold)
+
+edf_single <- edf_all %>%
+  filter(s <= threshold)
+edf_single_copy <- edf_single %>%
+  rename(from = to, to = from) %>%
+  select(from, everything())
+edf_single <- edf_single %>%
+  bind_rows(edf_single_copy) %>%
+  anti_join(edf_multiple, by = "from") %>%
+  anti_join(edf_multiple, by = c("from" = "to")) %>%
+  group_by(from) %>%
+  top_n(1, s) %>%
+  mutate(s = .001)
+
+edf <- edf_multiple %>%
+  bind_rows(edf_single) %>%
   arrange(s)
 
 ggplot() +
@@ -120,15 +176,26 @@ ggplot() +
                  size = s,
                  colour = s
                )) +
-  scale_color_gradient(low = "gray95", high = "gray50") + 
+  scale_color_gradient(low = rgb(0,0,0,.1), high = rgb(0,0,0,.75)) +
   geom_point(data = vdf,
-             aes(x, y, size = s),
-             colour = "gray50") +
-  geom_text_repel(data = vdf, aes(x, y, label = country),
-                  bg.color = "white",
-                  bg.r = 0.15) +
+             aes(x, y, size = s, fill = eu28),
+             colour = rgb(1, 1, 1, .5),
+             pch=21) +
+  scale_fill_manual(values = c("#035aa6", "#fcbf1e")) +
+  geom_text_repel(
+    data = vdf,
+    aes(x, y, label = country_name),
+    bg.color = rgb(1, 1, 1, .5),
+    bg.r = 0.15
+  ) +
+  labs(
+    title = "Force-Directed Graph of H2020 Collaboration",
+    subtitle = "Country Participation in H2020 Projects from 2014 to 2020",
+    caption = "Source: CORDIS"
+  ) +
   theme_bw() +
   theme(
+    plot.title.position = "plot",
     legend.position = "none",
     axis.title = element_blank(),
     axis.text = element_blank(),
@@ -139,15 +206,4 @@ ggplot() +
     panel.border = element_blank(),
     panel.background = element_blank()
   )
-
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
