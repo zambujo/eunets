@@ -39,7 +39,7 @@ df <-
 
 # Data
 
-See [`README.md`](https://github.com/zambujo/editorials).
+See [`README.md`](https://github.com/zambujo/eunets/).
 
 # Goal
 
