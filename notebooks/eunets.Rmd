@@ -7,9 +7,10 @@ knit: (function(inputFile, encoding) {
                         output_file=here::here('docs', 'index.html')) })
 output:
   html_document:
+    code_folding: show
     toc: true
     theme: united
-    highlight: breezedark
+    highlight: tango
     toc_float: true
     df_print: paged
 editor_options: 
@@ -51,17 +52,16 @@ Try reproducing the following figure:
 
 ```{r reprod, message=FALSE, warning=FALSE}
 
-collab <-
-  df %>%
+collab <- df %>%
   select(id,
          coordinator_country,
          participant_countries)
 
-## Q: coordinator_country always in list of participant_countries?
-# A: No. Add them to the list of participant countries.
+# assertion:
+# Q: coordinator_country in list of participant_countries?
+# A: Not always. Add them to the list of participant countries.
 # mutate(test = str_detect(participant_countries, coordinator_country)) %>%
 # summarise(all(test))
-
 
 collab <- collab %>%
   unite(
@@ -102,6 +102,7 @@ year_table <- df %>%
   mutate(year = str_sub(year, 1, 4)) %>%
   arrange(id)
 
+# show top-6 results
 country_stats %>%
   head() %>%
   kable()
@@ -119,9 +120,9 @@ g_collab <- collab %>%
 vertex_size <- igraph::strength(g_collab)
 g <- igraph::simplify(g_collab) # remove self-loops
 edge_weight <- igraph::E(g)$weight
+
+# adding sqrt() to mimic results
 lout <- igraph::layout_with_fr(g, weights = sqrt(edge_weight))
-
-
 colnames(lout) <- c("x", "y")
 
 vdf <- lout %>%
@@ -134,8 +135,7 @@ vdf <- lout %>%
     country_name = countrycode(country, "eurostat", "country.name")
   )
 
-
-# create separate rules to improve network representation
+# create separate rules to mimic network representation
 edf_all <- g %>%
   get.data.frame() %>%
   as_tibble() %>%
