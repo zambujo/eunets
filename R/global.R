@@ -5,10 +5,7 @@ eu13 <- c("BG", "HR", "CY", "CZ",
           "EE", "HU", "LV", "LT",
           "MT", "PL", "RO", "SK",
           "SI")
-other <- c("AM", "AL", "CH",
-           "GE", "IL", "ME",
-           "MK", "NO", "RS",
-           "TN", "TR", "UA")
+other <- c("IS", "NO", "CH", "IL", "TR", "RS", "UA")
 
 calculate_adjacency_matrix <- function(df) {
   df %>%

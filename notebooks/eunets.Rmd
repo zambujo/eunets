@@ -51,7 +51,6 @@ Try reproducing the following figure:
 # Data Preparation
 
 ```{r reprod, message=FALSE, warning=FALSE}
-
 collab <- df %>%
   select(id,
          coordinator_country,
@@ -97,21 +96,21 @@ g_collab <- collab_matrix %>%
       mode = "undirected",
       weighted = TRUE)
 
-g <- igraph::simplify(g_collab) # remove self-loops
-# igraph::strength(g_collab) - 2 * diag(collab_matrix)
+g <- igraph::simplify(g_collab) # remove 2 x diagonal
 vertex_size <- igraph::strength(g)
 edge_weight <- igraph::E(g)$weight
 
-lout <- igraph::layout_with_fr(g, weights = (edge_weight)^(1/4))
+lout <- igraph::layout_with_fr(g, weights = edge_weight)
 colnames(lout) <- c("x", "y")
 
 vdf <- lout %>%
   as_tibble() %>%
   mutate(
     country = names(igraph::V(g)),
-    status = "Other",
+    status = NA_character_,
     status = ifelse(country %in% eu15, "EU15", status),
     status = ifelse(country %in% eu13, "EU13", status),
+    status = ifelse(country %in% other, "Other", status),
     country_name = countrycode(country, "eurostat", "country.name"),
     weight = vertex_size,
     s = weight / 100

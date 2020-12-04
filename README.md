@@ -6,7 +6,8 @@
 
 ## Data
 
-[H2020 projects](https://cordis.europa.eu/data/cordis-h2020projects.csv)
+- [EU Open Data Portal: H2020 projects](https://cordis.europa.eu/data/cordis-h2020projects.csv)
+- [Eurostat: Country codes and protocol order](https://ec.europa.eu/eurostat/statistics-explained/index.php/Tutorial:Country_codes_and_protocol_order#EU.C2.A0and_euro_area_aggregates)
 
 ## License
 
