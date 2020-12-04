@@ -1,11 +1,42 @@
-eu15 <- c("AT", "BE", "DK", "FI", "FR",
-          "DE", "EL", "IE", "IT", "LU",
-          "NL", "PT", "ES", "SE", "UK")
-eu13 <- c("BG", "HR", "CY", "CZ",
-          "EE", "HU", "LV", "LT",
-          "MT", "PL", "RO", "SK",
+eu15 <- c("AT",
+          "BE",
+          "DK",
+          "FI",
+          "FR",
+          "DE",
+          "EL",
+          "IE",
+          "IT",
+          "LU",
+          "NL",
+          "PT",
+          "ES",
+          "SE",
+          "UK")
+eu13 <- c("BG",
+          "HR",
+          "CY",
+          "CZ",
+          "EE",
+          "HU",
+          "LV",
+          "LT",
+          "MT",
+          "PL",
+          "RO",
+          "SK",
           "SI")
-other <- c("IS", "NO", "CH", "IL", "TR", "RS", "UA")
+other <- c("IS",
+           "NO",
+           "CH",
+           "IL",
+           "TR",
+           "RS",
+           "UA")
+# https://colorhunt.co/palette/180404
+colorhunt <- c("#40bad5",
+               "#035aa6",
+               "#fcbf1e")
 
 calculate_adjacency_matrix <- function(df) {
   df %>%
