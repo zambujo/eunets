@@ -55,18 +55,11 @@ Try reproducing the following figure:
 collab <- df %>%
   select(id,
          coordinator_country,
-         participant_countries)
-
-# assertion:
-# Q: coordinator_country in list of participant_countries?
-# A: Not always. Add them to the list of participant countries.
-# mutate(test = str_detect(participant_countries, coordinator_country)) %>%
-# summarise(all(test))
-
-collab <- collab %>%
+         participant_countries)%>%
   unite(
     country,
-    c("coordinator_country", "participant_countries"),
+    c("coordinator_country", 
+      "participant_countries"),
     sep = ";",
     na.rm = TRUE
   ) %>%
@@ -74,65 +67,54 @@ collab <- collab %>%
   unnest(country) %>%
   filter(country != "NA")
 
+country_sel <- c(eu15, eu13, other)
 ncountries_pproj <- collab %>%
   count(id)
 
-# keep projects with only one country
+# remove one-country projects
 collab <- collab %>%
-  semi_join(filter(ncountries_pproj, n > 1), by = "id")
+  semi_join(filter(ncountries_pproj, n > 1), by = "id") %>%
+  filter(country %in% country_sel)
 
-country_stats <- collab %>%
-  count(country, sort = TRUE)
-
-country_stats <- country_stats %>%
-  mutate(
-    iso2c = countrycode(country, "eurostat", "iso2c", nomatch = NA_character_),
-    eu28 = countrycode(iso2c, "iso2c", "eu28", nomatch = "Non-EU")
-  )
-
-assoc <- c("CH", "NO", "IL", "TR")
-country_sel <-
-  country_stats %>%
-  filter(eu28 == "EU") %>%
-  pull(country) %>%
-  c(assoc)
-
+# start year of each project
 year_table <- df %>%
   select(id, year = start_date) %>%
   mutate(year = str_sub(year, 1, 4)) %>%
   arrange(id)
 
-# show top-6 results
-country_stats %>%
-  head() %>%
-  kable()
+collab_matrix <- collab %>%
+  filter(country %in% country_sel) %>%
+  calculate_adjacency_matrix()
+
+kable(collab_matrix)
 ```
 
 # Horizon 2020 network
 
-```{r network, fig.width=8, fig.height=8, message=FALSE, warning=FALSE}
+```{r network, fig.width=7, fig.height=7, message=FALSE, warning=FALSE}
+g_collab <- collab_matrix %>%
+      igraph::graph_from_adjacency_matrix(
+      mode = "undirected",
+      weighted = TRUE)
 
-g_collab <- collab %>%
-  # semi_join(filter(year_table, year == "2015"), by = "id") %>%
-  filter(country %in% country_sel) %>%
-  df2graph()
-
-vertex_size <- igraph::strength(g_collab)
 g <- igraph::simplify(g_collab) # remove self-loops
+# igraph::strength(g_collab) - 2 * diag(collab_matrix)
+vertex_size <- igraph::strength(g)
 edge_weight <- igraph::E(g)$weight
 
-# adding sqrt() to mimic results
-lout <- igraph::layout_with_fr(g, weights = sqrt(edge_weight))
+lout <- igraph::layout_with_fr(g, weights = (edge_weight)^(1/4))
 colnames(lout) <- c("x", "y")
 
 vdf <- lout %>%
   as_tibble() %>%
   mutate(
     country = names(igraph::V(g)),
+    status = "Other",
+    status = ifelse(country %in% eu15, "EU15", status),
+    status = ifelse(country %in% eu13, "EU13", status),
+    country_name = countrycode(country, "eurostat", "country.name"),
     weight = vertex_size,
-    s = weight / 100,
-    eu28 = countrycode(country, "eurostat", "eu28", nomatch = "Non-EU"),
-    country_name = countrycode(country, "eurostat", "country.name")
+    s = weight / 100
   )
 
 # create separate rules to mimic network representation
@@ -145,7 +127,7 @@ edf_all <- g %>%
   rename(to_x = x, to_y = y) %>%
   mutate(s = (weight / 1000) ^ 2.5)
 
-threshold <- .5
+threshold <- 1
 edf_multiple <- edf_all %>%
   filter(s > threshold)
 
@@ -176,12 +158,13 @@ ggplot() +
                  size = s,
                  colour = s
                )) +
-  scale_color_gradient(low = rgb(0,0,0,.1), high = rgb(0,0,0,.75)) +
+  scale_color_gradient(low = rgb(.9,.9,.9,1), high = rgb(.1,.1,.1,1)) +
   geom_point(data = vdf,
-             aes(x, y, size = s, fill = eu28),
+             aes(x, y, size = s, fill = status),
              colour = rgb(1, 1, 1, .5),
              pch=21) +
-  scale_fill_manual(values = c("#035aa6", "#fcbf1e")) +
+  # https://colorhunt.co/palette/180404
+  scale_fill_manual(values = c("#40bad5", "#035aa6", "#fcbf1e")) +
   geom_text_repel(
     data = vdf,
     aes(x, y, label = country_name),
