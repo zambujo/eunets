@@ -7,7 +7,7 @@ knit: (function(inputFile, encoding) {
                         output_file=here::here('docs', 'index.html')) })
 output:
   html_document:
-    code_folding: show
+    code_folding: hide
     toc: true
     theme: united
     highlight: tango
@@ -37,19 +37,17 @@ df <-
   clean_names()
 ```
 
-# Data
+## Data
 
 See [`README.md`](https://github.com/zambujo/eunets/).
 
-# Goal
+## Goal
 
 Try reproducing the following figure:
 
 ![doi: 10.1038/d41586-019-01566-z](https://media.nature.com/lw800/magazine-assets/d41586-019-01566-z/d41586-019-01566-z_16737728.png)
 
-
-# Data Preparation
-
+## Data Preparation
 ```{r reprod, message=FALSE, warning=FALSE}
 collab <- df %>%
   select(id,
@@ -84,13 +82,12 @@ year_table <- df %>%
 collab_matrix <- collab %>%
   filter(country %in% country_sel) %>%
   calculate_adjacency_matrix()
-
-kable(collab_matrix)
 ```
 
-# Horizon 2020 network
+---
 
-```{r network, fig.width=7, fig.height=7, message=FALSE, warning=FALSE}
+## Horizon 2020 network
+```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 g_collab <- collab_matrix %>%
       igraph::graph_from_adjacency_matrix(
       mode = "undirected",
@@ -100,7 +97,7 @@ g <- igraph::simplify(g_collab) # remove 2 x diagonal
 vertex_size <- igraph::strength(g)
 edge_weight <- igraph::E(g)$weight
 
-lout <- igraph::layout_with_fr(g, weights = edge_weight)
+lout <- igraph::layout_with_fr(g, weights = edge_weight^(1/5))
 colnames(lout) <- c("x", "y")
 
 vdf <- lout %>%
@@ -141,7 +138,7 @@ edf_single <- edf_single %>%
   anti_join(edf_multiple, by = c("from" = "to")) %>%
   group_by(from) %>%
   top_n(1, s) %>%
-  mutate(s = .001)
+  mutate(s = 1)
 
 edf <- edf_multiple %>%
   bind_rows(edf_single) %>%
@@ -157,16 +154,18 @@ ggplot() +
                  size = s,
                  colour = s
                )) +
-  scale_color_gradient(low = rgb(.9,.9,.9,1), high = rgb(.1,.1,.1,1)) +
+  scale_color_gradient(low = rgb(.9,.9,.9,1), high = rgb(.2,.2,.2,1)) +
   geom_point(data = vdf,
              aes(x, y, size = s, fill = status),
              colour = rgb(1, 1, 1, .5),
-             pch=21) +
+             pch = 21) +
+  scale_size(range = c(.75, 16)) +
   # https://colorhunt.co/palette/180404
   scale_fill_manual(values = c("#40bad5", "#035aa6", "#fcbf1e")) +
   geom_text_repel(
     data = vdf,
     aes(x, y, label = country_name),
+    size = 5.5,
     bg.color = rgb(1, 1, 1, .5),
     bg.r = 0.15
   ) +
