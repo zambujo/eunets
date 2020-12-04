@@ -167,6 +167,8 @@ ggplot() +
     data = vdf,
     aes(x, y, label = country_name),
     size = 5.5,
+    force = 3,
+    box.padding = unit(.8, "lines"),
     bg.color = rgb(1, 1, 1, .5),
     bg.r = 0.15
   ) +
@@ -224,6 +226,8 @@ ggplot(aes(population, weight, label = country_name, col = status),
   geom_point(size = 3, alpha = .8) +
   geom_text_repel(
     size = 5,
+    force = 2,
+    segment.alpha = 0.5,
     bg.color = rgb(1, 1, 1, .5),
     bg.r = 0.15,
     show.legend = FALSE) +
@@ -232,6 +236,7 @@ ggplot(aes(population, weight, label = country_name, col = status),
   scale_x_log10(labels = label_number(accuracy = 1, scale = 1e-6)) +
   labs(
     title = "H2020 Collaborations by Population",
+    subtitle = "Shown in log-log scale",
     caption = "Source: CORDIS, World Bank",
     color = element_blank(),
     x = "Population (mio)",
