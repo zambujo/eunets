@@ -33,20 +33,9 @@ other <- c("IS",
            "TR",
            "RS",
            "UA")
-# https://colorhunt.co/palette/180404
+
+# Credits: https://colorhunt.co/palette/180404
 colorhunt <- c("#40bad5",
                "#035aa6",
                "#fcbf1e")
 
-calculate_adjacency_matrix <- function(df) {
-  df %>%
-    table() %>%
-    crossprod()
-}
-
-scale_by <- function(x, mini = 0, c = 1, maxi) {
-  if (missing(maxi)) {
-    maxi <- max(x)
-  }
-  c * (x - mini) / (maxi - mini)
-}

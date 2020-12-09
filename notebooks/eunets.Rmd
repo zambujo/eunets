@@ -37,21 +37,32 @@ df <-
   here("data-raw", "cordis-h2020projects.csv") %>%
   read_csv2() %>% 
   clean_names()
+
+# good to have
+year_table <- df %>%
+  select(id, year = start_date) %>%
+  mutate(year = str_sub(year, 1, 4)) %>%
+  arrange(id)
+
 ```
 
-## Data
-
-See [`README.md`](https://github.com/zambujo/eunets/).
 
 ## Goal
 
-Try reproducing the following figure:
+Reproduce and update the [following figure](https://www.nature.com/articles/d41586-019-01566-z):
 
 ![doi: 10.1038/d41586-019-01566-z](https://media.nature.com/lw800/magazine-assets/d41586-019-01566-z/d41586-019-01566-z_16737728.png)
 
-## Data Preparation
+## Data
+
+CORDIS project data available on the [EU Open Data Portal](https://data.europa.eu/euodp/en/data/dataset/cordisH2020projects). More details in [`README.md`](https://github.com/zambujo/eunets/).
+
+### Data Cleaning
+
+Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
+
 ```{r reprod, message=FALSE, warning=FALSE}
-collab <- df %>%
+collaborations <- df %>%
   select(id,
          coordinator_country,
          participant_countries)%>%
@@ -66,43 +77,36 @@ collab <- df %>%
   unnest(country) %>%
   filter(country != "NA")
 
-country_sel <- c(eu15, eu13, other)
-ncountries_pproj <- collab %>%
-  count(id)
+number_participants <- count(collaborations, id) # allowing same country repeats!
+country_selection <- c(eu15, eu13, other) # in `R/global.R`
 
-# remove one-country projects
-collab <- collab %>%
-  semi_join(filter(ncountries_pproj, n > 1), by = "id") %>%
-  filter(country %in% country_sel)
+collaborations <- collaborations %>%
+  # remove single-participant projects
+  semi_join(filter(number_participants, n > 1), by = "id") %>%
+  # restrict to country selection
+  filter(country %in% country_selection)
 
-# start year of each project
-year_table <- df %>%
-  select(id, year = start_date) %>%
-  mutate(year = str_sub(year, 1, 4)) %>%
-  arrange(id)
-
-collab_matrix <- collab %>%
-  filter(country %in% country_sel) %>%
-  calculate_adjacency_matrix()
+collaborations <- collaborations %>%
+  table() %>%
+  crossprod()
 ```
 
 ---
 
 ## Horizon 2020 Network
 ```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
-g_collab <- collab_matrix %>%
-      igraph::graph_from_adjacency_matrix(
-      mode = "undirected",
-      weighted = TRUE)
+g_collab <- collaborations %>%
+  igraph::graph_from_adjacency_matrix(mode = "undirected", weighted = TRUE)
 
 g <- igraph::simplify(g_collab) # remove 2 x diagonal
 vertex_size <- igraph::strength(g)
 edge_weight <- igraph::E(g)$weight
 
-lout <- igraph::layout_with_fr(g, weights = edge_weight^(1/5))
-colnames(lout) <- c("x", "y")
+point_coordinates <-
+  igraph::layout_with_fr(g, weights = edge_weight ^ (1 / 5))
+colnames(point_coordinates) <- c("x", "y")
 
-vdf <- lout %>%
+nodes <- point_coordinates %>%
   as_tibble() %>%
   mutate(
     country = names(igraph::V(g)),
@@ -116,71 +120,83 @@ vdf <- lout %>%
   )
 
 # create separate rules to mimic network representation
-edf_all <- g %>%
+edges <- g %>%
   get.data.frame() %>%
   as_tibble() %>%
-  left_join(select(vdf, x:country), by = c("from" = "country")) %>%
+  left_join(select(nodes, x:country), by = c("from" = "country")) %>%
   rename(from_x = x, from_y = y) %>%
-  left_join(select(vdf, x:country), by = c("to" = "country")) %>%
+  left_join(select(nodes, x:country), by = c("to" = "country")) %>%
   rename(to_x = x, to_y = y) %>%
   mutate(s = (weight / 1000) ^ 2.5)
 
-threshold <- 1
-edf_multiple <- edf_all %>%
-  filter(s > threshold)
+threshold <- 1 # ad-hoc
 
-edf_single <- edf_all %>%
+core_edges <- edges %>%
+  filter(s > threshold)
+outer_edges <- edges %>%
   filter(s <= threshold)
-edf_single_copy <- edf_single %>%
+outer_edges_reversed <- outer_edges %>%
   rename(from = to, to = from) %>%
   select(from, everything())
-edf_single <- edf_single %>%
-  bind_rows(edf_single_copy) %>%
-  anti_join(edf_multiple, by = "from") %>%
-  anti_join(edf_multiple, by = c("from" = "to")) %>%
+outer_edges <- outer_edges %>%
+  bind_rows(outer_edges_reversed) %>%
+  anti_join(core_edges, by = "from") %>%
+  anti_join(core_edges, by = c("from" = "to")) %>%
   group_by(from) %>%
   top_n(1, s) %>%
   mutate(s = 1)
 
-edf <- edf_multiple %>%
-  bind_rows(edf_single) %>%
+edges <- core_edges %>%
+  bind_rows(outer_edges) %>%
   arrange(s)
 
 ggplot() +
-  geom_segment(data = edf,
-               aes(
-                 x = from_x,
-                 xend = to_x,
-                 y = from_y,
-                 yend = to_y,
-                 size = s,
-                 colour = s
-               )) +
-  scale_color_gradient(low = rgb(.9,.9,.9,1), high = rgb(.2,.2,.2,1)) +
-  geom_point(data = vdf,
-             aes(x, y, size = s, fill = status),
-             colour = rgb(1, 1, 1, .5),
-             pch = 21) +
-  scale_size(range = c(.75, 16)) +
+  geom_segment(
+    data = edges,
+    aes(
+      x = from_x,
+      xend = to_x,
+      y = from_y,
+      yend = to_y,
+      size = s,
+      colour = s
+    ),
+    show.legend = FALSE
+  ) +
+  scale_color_gradient(low = rgb(.9, .9, .9, 1), high = rgb(.5, .5, .5, 1)) +
+  geom_point(
+    data = nodes,
+    aes(x, y, size = s, fill = status),
+    pch = 21,
+    colour = rgb(1, 1, 1, .5)
+  ) +
   scale_fill_manual(values = colorhunt) +
+  scale_size(range = c(.75, 16)) +
+  guides(color = FALSE,
+         size = FALSE,
+         fill = guide_legend(override.aes = list(size = 7, shape = 21))) +
   geom_text_repel(
-    data = vdf,
+    data = nodes,
     aes(x, y, label = country_name),
     size = 5.5,
     force = 3,
+    segment.color = NA,
     box.padding = unit(.8, "lines"),
     bg.color = rgb(1, 1, 1, .5),
     bg.r = 0.15
   ) +
-  labs(
-    title = "Force-Directed Graph of H2020 Collaboration",
-    subtitle = "Country Participation in H2020 Projects from 2014 to 2020",
-    caption = "Source: CORDIS"
-  ) +
+  labs(title = "Force-Directed Graph of H2020 Collaborations",
+       subtitle = "EU Countries + 7 Others, 2014-2020",
+       caption = "Source: CORDIS") +
   theme_bw() +
   theme(
     plot.title.position = "plot",
-    legend.position = "none",
+    plot.title = element_text(size = 25, face = "bold"),
+    plot.subtitle = element_text(size = 18),
+    plot.caption = element_text(size = 10),
+    legend.position = c(0.95, 0.93),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16),
     axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),
@@ -194,13 +210,15 @@ ggplot() +
 
 ---
 
-## Population Dimension
-```{r country-size, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+## Collaborations by Population
 
-vdf <- vdf %>%
+Below, a log-log scale updated representation of Figure 2 from *[Network dynamics in collaborative research in the EU, 2003–2017](https://www.tandfonline.com/doi/figure/10.1080/09654313.2019.1641187)*.
+
+```{r country-size, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+nodes <- nodes %>%
   mutate(iso2c = countrycode(country, "eurostat", "iso2c"))
 
-population_table <- vdf %>%
+population_table <- nodes %>%
   pull(iso2c) %>%
   wbstats::wb(
     "SP.POP.TOTL",
@@ -211,11 +229,11 @@ population_table <- vdf %>%
   clean_names() %>%
   select(iso2c, population = sp_pop_totl)
 
-vdf <- vdf %>% 
+nodes <- nodes %>%
   left_join(population_table, by = "iso2c")
 
 ggplot(aes(population, weight, label = country_name, col = status),
-       data = vdf) +
+       data = nodes) +
   geom_smooth(
     method = "lm",
     se = FALSE,
@@ -230,7 +248,8 @@ ggplot(aes(population, weight, label = country_name, col = status),
     segment.alpha = 0.5,
     bg.color = rgb(1, 1, 1, .5),
     bg.r = 0.15,
-    show.legend = FALSE) +
+    show.legend = FALSE
+  ) +
   scale_color_manual(values = colorhunt) +
   scale_y_log10(labels = label_number(accuracy = 1, scale = 1e-3)) +
   scale_x_log10(labels = label_number(accuracy = 1, scale = 1e-6)) +
