@@ -7,7 +7,7 @@ knit: (function(inputFile, encoding) {
                         output_file=here::here('docs', 'index.html')) })
 output:
   html_document:
-    code_folding: hide
+    code_folding: show
     toc: true
     theme: united
     highlight: tango
@@ -19,31 +19,11 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(ggplot2)
-library(ggrepel)
-library(scales)
-library(janitor)
-library(countrycode)
-library(wbstats)
-library(igraph)
-library(here)
-library(knitr)
-library(conflicted)
-source(here::here("R", "global.R"))
-conflict_prefer("filter", "dplyr")
-
-df <- 
-  here("data-raw", "cordis-h2020projects.csv") %>%
-  read_csv2() %>% 
-  clean_names()
-
-# good to have
-year_table <- df %>%
-  select(id, year = start_date) %>%
-  mutate(year = str_sub(year, 1, 4)) %>%
-  arrange(id)
-
+# Credits: https://colorhunt.co/palette/180404
+colorhunt <- c("#40bad5",
+               "#035aa6",
+               "#fcbf1e")
+update_data <- FALSE
 ```
 
 
@@ -57,11 +37,39 @@ Reproduce and update the [following figure](https://www.nature.com/articles/d415
 
 CORDIS project data available on the [EU Open Data Portal](https://data.europa.eu/euodp/en/data/dataset/cordisH2020projects). More details in [`README.md`](https://github.com/zambujo/eunets/).
 
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggrepel)
+library(scales)
+library(janitor)
+library(countrycode)
+library(wbstats)
+library(igraph)
+library(yaml)
+library(here)
+library(knitr)
+library(conflicted)
+conflict_prefer("filter", "dplyr")
+
+if (update_data) {
+  download.file(
+    "https://cordis.europa.eu/data/cordis-h2020projects.csv",
+    here("data-raw", "cordis-h2020projects.csv"))
+} 
+df <- 
+  here("data-raw", "cordis-h2020projects.csv") %>%
+  read_csv2() %>% 
+  clean_names()
+```
+
+
 ### Data Cleaning
 
 Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
 
-```{r reprod, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE}
 collaborations <- df %>%
   select(id,
          coordinator_country,
@@ -78,7 +86,13 @@ collaborations <- df %>%
   filter(country != "NA")
 
 number_participants <- count(collaborations, id) # allowing same country repeats!
-country_selection <- c(eu15, eu13, other) # in `R/global.R`
+country_selection <- here("countries.yml") %>%
+  read_yaml()
+eu15 <- pluck(country_selection, "eu15")
+eu13 <- pluck(country_selection, "eu13")
+other <- pluck(country_selection, "other")
+country_selection <- country_selection %>%
+  flatten_chr()
 
 collaborations <- collaborations %>%
   # remove single-participant projects
@@ -197,6 +211,7 @@ ggplot() +
     legend.position = c(0.95, 0.93),
     legend.title = element_blank(),
     legend.text = element_text(size = 16),
+    legend.key.size = unit(2, "lines"),
     axis.title = element_blank(),
     axis.text = element_blank(),
     axis.ticks = element_blank(),

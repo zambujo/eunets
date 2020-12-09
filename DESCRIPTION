@@ -16,32 +16,18 @@ Description: Reproduce, update, and extend the results in
      DOI: https://doi.org/10.1038/d41586-019-01566-z
 License: What license it uses
 Depends: 
-    config,
     conflicted,
     countrycode,
-    dplyr,
-    feather,
-    ggalluvial,
-    ggplot2,
-    ggpubr,
     ggrepel,
-    ggsci,
-    graphics,
     here,
     igraph,
     janitor,
     knitr,
-    readr,
-    rmarkdown,
     scales,
-    stringr,
-    tidyr,
     tidyverse,
-    viridis,
-    wbstats
-Remotes: 
-    nset-ornl/wbstats,
-    slowkow/ggrepel,
-    tidyverse/ggplot2
+    wbstats,
+    yaml
+Suggests: 
+    rmarkdown
 Encoding: UTF-8
 LazyData: true
