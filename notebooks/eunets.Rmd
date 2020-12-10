@@ -50,6 +50,7 @@ library(conflicted)
 conflict_prefer("filter", "dplyr")
 
 if (update_data) {
+  # 66.5 MB CSV file
   download.file(
     "https://cordis.europa.eu/data/cordis-h2020projects.csv",
     here("data-raw", "cordis-h2020projects.csv"))
@@ -96,20 +97,18 @@ collaborations <- collaborations %>%
   # remove single-country projects
   semi_join(filter(number_countries, n > 1), by = "id")
 
+
+# building the graph ------------------------------------------------------
+
 # adjacency matrix
-collaborations <- 
+collaborations <-
   collaborations %>%
   table() %>%
   crossprod()
-```
 
----
-
-## Horizon 2020 Network
-```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
-g_collab <- 
+g_collab <-
   collaborations %>%
-  igraph::graph_from_adjacency_matrix(mode = "undirected", 
+  igraph::graph_from_adjacency_matrix(mode = "undirected",
                                       weighted = TRUE)
 
 g <- igraph::simplify(g_collab) # remove diagonal 2x
@@ -143,6 +142,9 @@ edges <- g %>%
   rename(to_x = x, to_y = y) %>%
   mutate(s = (weight / 1000) ^ 2.5) # ad-hoc
 
+
+# tweaks ------------------------------------------------------------------
+
 # separate rules to approach Nature's representation
 threshold <- 1 # ad-hoc
 core_edges <- edges %>%
@@ -163,7 +165,12 @@ outer_edges <- outer_edges %>%
 edges <- core_edges %>%
   bind_rows(outer_edges) %>%
   arrange(s) # plot stronger edges last
+```
 
+---
+
+## Horizon 2020 Network
+```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 ggplot() +
   geom_segment(
     data = edges,
@@ -186,10 +193,10 @@ ggplot() +
   ) +
   scale_fill_manual(values = colorhunt) +
   scale_size(range = c(.75, 16)) +
-  guides(color = FALSE,
-         size = FALSE,
-         fill = guide_legend(
-           override.aes = list(size = 7, shape = 21))) +
+  guides(
+    fill = guide_legend(override.aes = list(size = 7, shape = 21)),
+    color = FALSE,
+    size = FALSE) +
   geom_text_repel(
     data = nodes,
     aes(x, y, label = country_name),
@@ -226,27 +233,22 @@ ggplot() +
 
 ---
 
-## Collaborations by Population
+## Population Size
 
 Below, a log-log scale updated representation of Figure 2 from *[Network dynamics in collaborative research in the EU, 2003–2017](https://www.tandfonline.com/doi/figure/10.1080/09654313.2019.1641187)*.
 
-```{r country-size, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
-nodes <- nodes %>%
-  # for world bank compatibility
-  mutate(iso2c = countrycode(country, "eurostat", "iso2c"))
-
-population_table <- nodes %>%
-  pull(iso2c) %>%
-  wbstats::wb(
-    "SP.POP.TOTL",
-    startdate = 2017,
-    enddate = 2017,
-    return_wide = TRUE
-  ) %>%
+```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+population_table <- wbstats::wb_data(
+  indicator = "SP.POP.TOTL",
+  country = countrycode(country_selection, "eurostat", "iso2c"),
+  start_date = 2017,
+  end_date = 2017) %>%
   clean_names() %>%
   select(iso2c, population = sp_pop_totl)
 
 nodes <- nodes %>%
+  # for world bank compatibility
+  mutate(iso2c = countrycode(country, "eurostat", "iso2c")) %>%
   left_join(population_table, by = "iso2c")
 
 ggplot(aes(population, weight, label = country_name, col = status),
