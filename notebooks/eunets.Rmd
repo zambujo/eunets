@@ -50,10 +50,19 @@ library(conflicted)
 conflict_prefer("filter", "dplyr")
 
 if (update_data) {
-  # 66.5 MB CSV file
+  # 67.4 MB CSV file (last updated on 2020-12-14)
   download.file(
     "https://cordis.europa.eu/data/cordis-h2020projects.csv",
     here("data-raw", "cordis-h2020projects.csv"))
+  download.file(
+    "http://cordis.europa.eu/data/reference/cordisref-countries.csv",
+    here("data-raw", "cordisref-countries.csv"))
+  download.file(
+    "http://cordis.europa.eu/data/reference/cordisref-sicCode.csv",
+    here("data-raw", "cordisref-sicCode.csv"))
+  download.file(
+    "http://cordis.europa.eu/data/reference/cordisref-projectFundingSchemeCategory.csv",
+    here("data-raw", "cordisref-projectFundingSchemeCategory.csv"))
 }
 df <-
   here("data-raw", "cordis-h2020projects.csv") %>%
@@ -93,31 +102,125 @@ number_countries <- collaborations %>%
   summarise(n = n_distinct(country),
             .groups = "drop")
 
+# remove single-country projects
 collaborations <- collaborations %>%
-  # remove single-country projects
   semi_join(filter(number_countries, n > 1), by = "id")
 
 
 # building the graph ------------------------------------------------------
 
 # adjacency matrix
-collaborations <-
-  collaborations %>%
-  table() %>%
+collaborations <- table(collaborations) %>%
   crossprod()
 
-g_collab <-
-  collaborations %>%
+g_collab <- collaborations %>%
   igraph::graph_from_adjacency_matrix(mode = "undirected",
                                       weighted = TRUE)
-
-g <- igraph::simplify(g_collab) # remove diagonal 2x
-node_size <-   igraph::strength(g)
+# remove same-country collaboration (diagonal 2x)
+g <- igraph::simplify(g_collab)
+node_size <-   igraph::strength(g) # ignore same-country collaboration
 edge_weight <- igraph::E(g)$weight
 
+point_coordinates <- igraph::layout_with_fr(g, weights = edge_weight)
+colnames(point_coordinates) <- c("x", "y")
+
+nodes <- point_coordinates %>%
+  as_tibble() %>%
+  mutate(
+    country = names(igraph::V(g)),
+    status = NA_character_,
+    status = ifelse(country %in% eu15, "EU15", status),
+    status = ifelse(country %in% eu13, "EU13", status),
+    status = ifelse(country %in% other, "Other", status),
+    country_name = countrycode(country, "eurostat", "country.name"),
+    s = node_size) %>%
+  arrange(s)
+
+edges <- get.data.frame(g) %>%
+  as_tibble() %>%
+  left_join(select(nodes, x:country), by = c("from" = "country")) %>%
+  rename(from_x = x, from_y = y) %>%
+  left_join(select(nodes, x:country), by = c("to" = "country")) %>%
+  rename(to_x = x, to_y = y) %>%
+  mutate(s = weight) %>%
+  arrange(s)
+```
+
+## Horizon 2020 Network
+
+### Unabridged
+
+```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+ggplot() +
+  geom_segment(
+    data = edges,
+    aes(
+      x = from_x,
+      xend = to_x,
+      y = from_y,
+      yend = to_y,
+      size = s,
+      colour = s
+    ),
+    show.legend = FALSE
+  ) +
+  scale_color_gradient(low = rgb(0, 0, 0, .05), 
+                       high = rgb(0, 0, 0, .45)) +
+  geom_point(
+    data = nodes,
+    aes(x, y, size = s, fill = status),
+    pch = 21,
+    colour = "white"
+  ) +
+  scale_fill_manual(values = colorhunt) +
+  scale_size(range = c(.25, 10)) +
+  guides(
+    fill = guide_legend(override.aes = list(size = 7, shape = 21)),
+    color = "none",
+    size = "none") +
+  geom_text_repel(
+    data = nodes,
+    aes(x, y, label = country_name),
+    size = 5.5,
+    segment.color = NA,
+    bg.color = "white",
+    bg.r = 0.15
+  ) +
+  labs(title = "Force-Directed Graph of H2020 Collaborations",
+       subtitle = "EU Countries + 7 Others, 2014-2020",
+       caption = "Source: CORDIS") +
+  theme_bw() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size = 25, face = "bold"),
+    plot.subtitle = element_text(size = 18),
+    plot.caption = element_text(size = 10),
+    legend.position = c(.95, .95),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16),
+    legend.key.size = unit(2, "lines"),
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()
+  )
+
+```
+
+### Pruned
+
+
+```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+# re-calculate layout on log-scale of edge weight
+
+# spread core:
 point_coordinates <- g %>%
-  # ad-hoc edge weight tweaking
-  igraph::layout_with_fr(weights = edge_weight ^ (1 / 5))
+  #  edge weight
+  igraph::layout_with_fr(weights = log(edge_weight))
 colnames(point_coordinates) <- c("x", "y")
 
 nodes <- point_coordinates %>%
@@ -131,7 +234,8 @@ nodes <- point_coordinates %>%
     country_name = countrycode(country, "eurostat", "country.name"),
     weight = node_size,
     s = weight / 100 # ad-hoc
-  )
+  ) %>%
+  arrange(s)
 
 edges <- g %>%
   get.data.frame() %>%
@@ -140,10 +244,8 @@ edges <- g %>%
   rename(from_x = x, from_y = y) %>%
   left_join(select(nodes, x:country), by = c("to" = "country")) %>%
   rename(to_x = x, to_y = y) %>%
-  mutate(s = (weight / 1000) ^ 2.5) # ad-hoc
-
-
-# tweaks ------------------------------------------------------------------
+  mutate(s = (weight / 1000) ^ 2.5) %>% # ad-hoc
+  arrange(s)
 
 # separate rules to approach Nature's representation
 threshold <- 1 # ad-hoc
@@ -165,12 +267,7 @@ outer_edges <- outer_edges %>%
 edges <- core_edges %>%
   bind_rows(outer_edges) %>%
   arrange(s) # plot stronger edges last
-```
 
----
-
-## Horizon 2020 Network
-```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 ggplot() +
   geom_segment(
     data = edges,
@@ -195,8 +292,8 @@ ggplot() +
   scale_size(range = c(.75, 16)) +
   guides(
     fill = guide_legend(override.aes = list(size = 7, shape = 21)),
-    color = FALSE,
-    size = FALSE) +
+    color = "none",
+    size = "none") +
   geom_text_repel(
     data = nodes,
     aes(x, y, label = country_name),
@@ -207,7 +304,7 @@ ggplot() +
     bg.color = "white",
     bg.r = 0.15
   ) +
-  labs(title = "Force-Directed Graph of H2020 Collaborations",
+  labs(title = "Log-Force-Directed Graph of H2020 Collaborations",
        subtitle = "EU Countries + 7 Others, 2014-2020",
        caption = "Source: CORDIS") +
   theme_bw() +

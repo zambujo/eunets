@@ -18,15 +18,16 @@ License: What license it uses
 Depends: 
     conflicted,
     countrycode,
-    ggrepel,
     here,
     igraph,
     janitor,
     knitr,
     scales,
     tidyverse,
-    wbstats,
     yaml
+Remotes:
+    nset-ornl/wbstats
+    slowkow/ggrepel
 Suggests: 
     rmarkdown
 Encoding: UTF-8
