@@ -9,11 +9,11 @@ knit: (function(inputFile, encoding) {
 output:
   html_document:
     code_folding: hide
+    self_contained: false
     toc: true
     theme: united
     highlight: tango
     toc_float: true
-    df_print: paged
 editor_options:
   chunk_output_type: console
 ---
