@@ -16,6 +16,7 @@ Related:
 
 - [EU Open Data Portal: H2020 projects](https://cordis.europa.eu/data/cordis-h2020projects.csv) (see [description](https://data.europa.eu/euodp/en/data/dataset/cordisH2020projects)), last updated 2020-12-14
 - [Eurostat: Country codes and protocol order](https://ec.europa.eu/eurostat/statistics-explained/index.php/Tutorial:Country_codes_and_protocol_order#EU.C2.A0and_euro_area_aggregates)
+- [H2020 Associated Countries](https://ec.europa.eu/info/research-and-innovation/statistics/framework-programme-facts-and-figures/horizon-2020-country-profiles_en)
 
 ### See also
 

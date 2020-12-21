@@ -16,17 +16,20 @@ Description: Reproduce, update, and extend the results in
      DOI: https://doi.org/10.1038/d41586-019-01566-z
 License: What license it uses
 Depends: 
-    conflicted,
+    assertthat,
     countrycode,
+    glue,
     here,
     igraph,
     janitor,
     knitr,
+    lubridate,
     scales,
     tidyverse,
+    usethis,
     yaml
 Remotes:
-    nset-ornl/wbstats
+    nset-ornl/wbstats,
     slowkow/ggrepel
 Suggests: 
     rmarkdown

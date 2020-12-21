@@ -1,3 +1,4 @@
+# see https://ec.europa.eu/eurostat/statistics-explained/index.php/Glossary:Country_codes
 eu15:
   - "AT"
   - "BE"
@@ -28,11 +29,20 @@ eu13:
   - "RO"
   - "SK"
   - "SI"
-other:
+ac:
+  - "AL"
+  - "AR"
+  - "BA"
+  - "FO"
+  - "GE"
   - "IS"
-  - "NO"
-  - "CH"
   - "IL"
-  - "TR"
+  - "MD"
+  - "MK"
+  - "ME"
+  - "NO"
   - "RS"
+  - "CH"
+  - "TN"
+  - "TR"
   - "UA"
