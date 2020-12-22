@@ -1,45 +1,84 @@
-cd
+---
+title: "H2020 Country Collaboration Network"
+author: "Joao Martins"
+knit: (function(inputFile, encoding) {
+         rmarkdown::render(inputFile,
+                           encoding = encoding,
+                           output_file = here::here("docs",
+                                                    "index.html"))})
+output:
+  html_document:
+    code_folding: hide
+    self_contained: false
+    toc: true
+    theme: united
+    highlight: tango
+    toc_float: true
+editor_options:
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+# credits: https://colorhunt.co/palette/180404
+colorhunt <- c("#fcbf1e", "#40bad5", "#035aa6")
+knitr::opts_chunk$set(echo = TRUE)
+## run `R/gather.R` to update the data
+## run `R/clean.R` to prepare the data
+```
+
+## Goal
+
+Reproduce and update the [following figure](https://www.nature.com/articles/d41586-019-01566-z):
+
+![doi: 10.1038/d41586-019-01566-z](https://media.nature.com/lw800/magazine-assets/d41586-019-01566-z/d41586-019-01566-z_16737728.png)
+
+## Data
+
+CORDIS project data available on the [EU Open Data Portal](https://data.europa.eu/euodp/en/data/dataset/cordisH2020projects). More details in [`README.md`](https://github.com/zambujo/eunets/).
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggrepel)
+library(scales)
+library(janitor)
+library(countrycode)
+library(wbstats)
+library(igraph)
+library(yaml)
+library(here)
+library(knitr)
+library(conflicted)
+conflict_prefer("filter", "dplyr")
+
+df <-
+  here("data", "h2020.csv") %>%
+  read_csv() %>%
+  clean_names()
+```
+
 ### Data Cleaning
 
 Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
 
 ```{r, message=FALSE, warning=FALSE}
-country_selection <- read_yaml(here("countries.yml"))
-eu15 <-  pluck(country_selection, "eu15")
-eu13 <-  pluck(country_selection, "eu13")
-other <- pluck(country_selection, "other")
-country_selection <- flatten_chr(country_selection)
 
-collaborations <- 
-  df %>%
-  select(id,
-         coordinator_country,
-         participant_countries) %>%
-  unite(
-    country,
-    c("coordinator_country",
-      "participant_countries"),
-    sep = ";",
-    na.rm = TRUE
-  ) %>%
-  mutate(country = str_split(country, ";")) %>%
-  unnest(country) %>%
-  filter(country %in% country_selection)
+df <- df %>%
+  # remove single-country projects and other countries
+  filter(!is.na(group), nunique > 1) %>%
+  select(rcn,
+         country,
+         group)
 
-number_countries <- collaborations %>%
-  group_by(id) %>%
-  summarise(n = n_distinct(country),
-            .groups = "drop")
-
-# remove single-country projects
-collaborations <- collaborations %>%
-  semi_join(filter(number_countries, n > 1), by = "id")
-
+info_countries <- df %>%
+  distinct(country, group) %>%
+  arrange(country)
 
 # building the graph ------------------------------------------------------
 
 # adjacency matrix
-collaborations <- table(collaborations) %>%
+collaborations <- df %>%
+  select(rcn, country) %>%
+  table() %>%
   crossprod()
 
 g_collab <- collaborations %>%
@@ -53,16 +92,16 @@ edge_weight <- igraph::E(g)$weight
 point_coordinates <- igraph::layout_with_fr(g, weights = edge_weight)
 colnames(point_coordinates) <- c("x", "y")
 
-nodes <- point_coordinates %>%
+nodes <- 
+  point_coordinates %>%
   as_tibble() %>%
+  mutate(country = names(igraph::V(g))) %>%
+  left_join(info_countries, by = "country") %>%
   mutate(
-    country = names(igraph::V(g)),
-    status = NA_character_,
-    status = ifelse(country %in% eu15, "EU15", status),
-    status = ifelse(country %in% eu13, "EU13", status),
-    status = ifelse(country %in% other, "Other", status),
+    status = str_to_upper(group),
     country_name = countrycode(country, "eurostat", "country.name"),
-    s = node_size) %>%
+    s = node_size
+  ) %>%
   arrange(s)
 
 edges <- get.data.frame(g) %>%
@@ -102,7 +141,7 @@ ggplot() +
     colour = "white"
   ) +
   scale_fill_manual(values = colorhunt) +
-  scale_size(range = c(.25, 10)) +
+  scale_size(range = c(.25, 5)) +
   guides(
     fill = guide_legend(override.aes = list(size = 7, shape = 21)),
     color = "none",
@@ -152,17 +191,15 @@ point_coordinates <- g %>%
   igraph::layout_with_fr(weights = log(edge_weight))
 colnames(point_coordinates) <- c("x", "y")
 
-nodes <- point_coordinates %>%
+nodes <- 
+  point_coordinates %>%
   as_tibble() %>%
+  mutate(country = names(igraph::V(g))) %>%
+  left_join(info_countries, by = "country") %>%
   mutate(
-    country = names(igraph::V(g)),
-    status = NA_character_,
-    status = ifelse(country %in% eu15, "EU15", status),
-    status = ifelse(country %in% eu13, "EU13", status),
-    status = ifelse(country %in% other, "Other", status),
+    status = str_to_upper(group),
     country_name = countrycode(country, "eurostat", "country.name"),
-    weight = node_size,
-    s = weight / 100 # ad-hoc
+    s = node_size
   ) %>%
   arrange(s)
 
@@ -266,9 +303,10 @@ Below, a log-log scale updated representation of Figure 2 from *[Network dynamic
 ```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
 population_table <- wbstats::wb_data(
   indicator = "SP.POP.TOTL",
-  country = countrycode(country_selection, "eurostat", "iso2c"),
+  country = countrycode(pull(info_countries, country), "eurostat", "iso2c"),
   start_date = 2017,
-  end_date = 2017) %>%
+  end_date = 2017
+) %>%
   clean_names() %>%
   select(iso2c, population = sp_pop_totl)
 
@@ -277,7 +315,7 @@ nodes <- nodes %>%
   mutate(iso2c = countrycode(country, "eurostat", "iso2c")) %>%
   left_join(population_table, by = "iso2c")
 
-ggplot(aes(population, weight, label = country_name, col = status),
+ggplot(aes(population, s, label = country_name, col = status),
        data = nodes) +
   geom_smooth(
     method = "lm",

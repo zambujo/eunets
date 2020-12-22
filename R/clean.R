@@ -16,27 +16,15 @@ country_selection <- yaml::read_yaml(here::here("countries.yml"))
 
 # logic -------------------------------------------------------------------
 
-info_country <- tibble::tibble(country = purrr::flatten_chr(country_selection),
-                               group = "other") %>%
-  dplyr::mutate(
-    group = ifelse(
-      country %in% purrr::pluck(country_selection, "eu15"),
-      "eu15",
-      group
-    ),
-    group = ifelse(
-      country %in% purrr::pluck(country_selection, "eu13"),
-      "eu13",
-      group
-    ),
-    group = ifelse(
-      country %in% purrr::pluck(country_selection, "ac"),
-      "ac",
-      group
-    )
-  )
+list_to_df <- function(el, el_names)
+  dplyr::tibble(country = el, group = el_names)
 
-meta <- projects %>%
+info_country <-
+  purrr::map2_df(country_selection,
+                 names(country_selection),
+                 list_to_df)
+
+project_dimensions <- projects %>%
   dplyr::select(
     rcn,
     funding_scheme,
@@ -58,7 +46,7 @@ meta <- projects %>%
     duration = round(duration)
   )
 
-df <- organizations %>%
+h2020 <- organizations %>%
   dplyr::select(
     rcn = project_rcn,
     role,
@@ -68,24 +56,24 @@ df <- organizations %>%
     country
   )
 
-nunique_countries <- df %>%
+nunique_countries <- h2020 %>%
   dplyr::group_by(rcn) %>%
   dplyr::summarise(nunique = dplyr::n_distinct(country),
-            .groups = "drop")
-
-# nrow(distinct(filter(df, nunique == 1), rcn)) / nrow(distinct(df, rcn))
-# ca. 2/3 of one-country projects in H2020
+                   .groups = "drop")
 
 # write -------------------------------------------------------------------
 
-df <- df %>%
-  dplyr::left_join(meta, by = "rcn") %>%
+h2020 <- h2020 %>%
+  dplyr::left_join(project_dimensions, by = "rcn") %>%
   dplyr::left_join(info_country, by = "country") %>%
   dplyr::left_join(nunique_countries, by = "rcn")
 
-assertthat::see_if(identical(nrow(organizations), nrow(dplyr::distinct(df))),
-                   msg = "nrow(organizations) != nrow(distinct(df))")
+assertthat::see_if(identical(nrow(organizations), nrow(dplyr::distinct(h2020))),
+                   msg = "nrow(organizations) != nrow(distinct(h2020))")
 
-df %>%
+# nrow(dplyr::distinct(dplyr::filter(h2020, nunique == 1), rcn)) / nrow(dplyr::distinct(h2020, rcn))
+# ca. 2/3 of one-country projects in H2020
+
+h2020 %>%
   # readr::write_csv(gzfile(here::here("data", "h2020.csv.gz")))
   readr::write_csv(here::here("data", "h2020.csv"))
