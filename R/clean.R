@@ -66,7 +66,11 @@ nunique_countries <- h2020 %>%
 h2020 <- h2020 %>%
   dplyr::left_join(project_dimensions, by = "rcn") %>%
   dplyr::left_join(info_country, by = "country") %>%
-  dplyr::left_join(nunique_countries, by = "rcn")
+  dplyr::left_join(nunique_countries, by = "rcn") %>%
+  dplyr::mutate(
+    group = forcats::fct_explicit_na(group, na_level = "tc"),
+  )
+
 
 assertthat::see_if(identical(nrow(organizations), nrow(dplyr::distinct(h2020))),
                    msg = "nrow(organizations) != nrow(distinct(h2020))")

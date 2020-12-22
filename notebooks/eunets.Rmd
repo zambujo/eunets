@@ -19,11 +19,9 @@ editor_options:
 ---
 
 ```{r, include=FALSE}
-# credits: https://colorhunt.co/palette/180404
-colorhunt <- c("#fcbf1e", "#40bad5", "#035aa6")
-knitr::opts_chunk$set(echo = TRUE)
 ## run `R/gather.R` to update the data
 ## run `R/clean.R` to prepare the data
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Goal
@@ -50,10 +48,8 @@ library(knitr)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 
-df <-
-  here("data", "h2020.csv") %>%
-  read_csv() %>%
-  clean_names()
+# credits: https://colorhunt.co/palette/180404
+colorhunt <- c("#fcbf1e", "#40bad5", "#035aa6")
 ```
 
 ### Data Cleaning
@@ -61,13 +57,15 @@ df <-
 Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
 
 ```{r, message=FALSE, warning=FALSE}
+df <-
+  here("data", "h2020.csv") %>%
+  read_csv()
+  # mutate(group = fct_relevel(group, "eu15", "eu13", "ac", "tc"))
 
 df <- df %>%
   # remove single-country projects and other countries
-  filter(!is.na(group), nunique > 1) %>%
-  select(rcn,
-         country,
-         group)
+  filter(group %in% c("eu15", "eu13", "ac"), nunique > 1) %>%
+  select(rcn, country, group)
 
 info_countries <- df %>%
   distinct(country, group) %>%
@@ -181,10 +179,8 @@ ggplot() +
 
 ### Pruned
 
-
 ```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 # re-calculate layout on log-scale of edge weight
-
 # spread core:
 point_coordinates <- g %>%
   #  edge weight
@@ -210,7 +206,7 @@ edges <- g %>%
   rename(from_x = x, from_y = y) %>%
   left_join(select(nodes, x:country), by = c("to" = "country")) %>%
   rename(to_x = x, to_y = y) %>%
-  mutate(s = (weight / 1000) ^ 2.5) %>% # ad-hoc
+  # mutate(s = (weight / 1000) ^ 2.5) %>% # ad-hoc
   arrange(s)
 
 # separate rules to approach Nature's representation
