@@ -11,5 +11,5 @@ download_file <- function(file_name,
 
 # main --------------------------------------------------------------------
 
-files <- yaml::read_yaml(here::here("cordis-data.yml"))
+files <- yaml::read_yaml(here::here("data", "cordis-data.yml"))
 purrr::walk(files, download_file)
