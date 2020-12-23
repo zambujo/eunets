@@ -57,26 +57,32 @@ colorhunt <- c("#fcbf1e", "#40bad5", "#035aa6")
 Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
 
 ```{r, message=FALSE, warning=FALSE}
-df <-
+h2020 <-
   here("data", "h2020.csv") %>%
   read_csv()
   # mutate(group = fct_relevel(group, "eu15", "eu13", "ac", "tc"))
 
-df <- df %>%
+h2020 <- h2020 %>%
   # remove single-country projects and other countries
-  filter(group %in% c("eu15", "eu13", "ac"), nunique > 1) %>%
-  select(rcn, country, group)
+  filter(group %in% c("eu15", "eu13", "ac"), nunique > 1)
 
-info_countries <- df %>%
+info_countries <- h2020 %>%
   distinct(country, group) %>%
   arrange(country)
 
 # building the graph ------------------------------------------------------
 
 # adjacency matrix
-collaborations <- df %>%
-  select(rcn, country) %>%
-  table() %>%
+pivot <- h2020 %>%
+  group_by(rcn, country) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  pivot_wider(names_from = country, 
+              values_from = n, 
+              values_fill = 0)
+
+collaborations <- pivot %>%
+  select(-rcn) %>%
+  as.matrix() %>%
   crossprod()
 
 g_collab <- collaborations %>%
@@ -114,7 +120,7 @@ edges <- get.data.frame(g) %>%
 
 ## Horizon 2020 Network
 
-### Unabridged
+### Raw Graph
 
 ```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 ggplot() +
@@ -153,7 +159,7 @@ ggplot() +
     bg.r = 0.15
   ) +
   labs(title = "Force-Directed Graph of H2020 Collaborations",
-       subtitle = "EU Countries + 7 Others, 2014-2020",
+       subtitle = "EU + Associated Countries, 2014-2020",
        caption = "Source: CORDIS") +
   theme_bw() +
   theme(
@@ -174,12 +180,222 @@ ggplot() +
     panel.border = element_blank(),
     panel.background = element_blank()
   )
-
 ```
 
-### Pruned
+Difficult to perceive differences between the core countries.
 
-```{r network, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+### Log-Scaled Weighting
+
+```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+# recalculating point coordinates using "log(edge weights)"
+point_coordinates <- igraph::layout_with_fr(g, weights = log(edge_weight))
+colnames(point_coordinates) <- c("x", "y")
+
+nodes <- 
+  point_coordinates %>%
+  as_tibble() %>%
+  mutate(country = names(igraph::V(g))) %>%
+  left_join(info_countries, by = "country") %>%
+  mutate(
+    status = str_to_upper(group),
+    country_name = countrycode(country, "eurostat", "country.name"),
+    s = node_size
+  ) %>%
+  arrange(s)
+
+edges <- get.data.frame(g) %>%
+  as_tibble() %>%
+  left_join(select(nodes, x:country), by = c("from" = "country")) %>%
+  rename(from_x = x, from_y = y) %>%
+  left_join(select(nodes, x:country), by = c("to" = "country")) %>%
+  rename(to_x = x, to_y = y) %>%
+  mutate(s = weight) %>%
+  arrange(s)
+
+ggplot() +
+  geom_segment(
+    data = edges,
+    aes(
+      x = from_x,
+      xend = to_x,
+      y = from_y,
+      yend = to_y,
+      size = s,
+      colour = s
+    ),
+    show.legend = FALSE
+  ) +
+  scale_color_gradient(low = rgb(0, 0, 0, .05), 
+                       high = rgb(0, 0, 0, .45)) +
+  geom_point(
+    data = nodes,
+    aes(x, y, size = s, fill = status),
+    pch = 21,
+    colour = "white"
+  ) +
+  scale_fill_manual(values = colorhunt) +
+  scale_size(range = c(.25, 15)) +
+  guides(
+    fill = guide_legend(override.aes = list(size = 7, shape = 21)),
+    color = "none",
+    size = "none") +
+  geom_text_repel(
+    data = nodes,
+    aes(x, y, label = country_name),
+    size = 5.5,
+    segment.color = NA,
+    bg.color = "white",
+    bg.r = 0.15
+  ) +
+  labs(title = "Log-Force-Directed Graph of H2020 Collaborations",
+       subtitle = "EU + Associated Countries, 2014-2020",
+       caption = "Source: CORDIS") +
+  theme_bw() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size = 25, face = "bold"),
+    plot.subtitle = element_text(size = 18),
+    plot.caption = element_text(size = 10),
+    legend.position = c(.95, .95),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16),
+    legend.key.size = unit(2, "lines"),
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()
+  )
+```
+
+### Log-Scaled w/ Contribution Weighting 
+
+```{r, eval=FALSE}
+h2020 %>%
+  ggplot(aes(role, contribution)) +
+  geom_boxplot() + 
+  scale_y_log10(labels = label_number(accuracy = 1)) +
+  coord_flip() + 
+  theme_bw()
+```
+
+Re-calculating weights using country-specific financial contributions:
+
+```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+pivot <- h2020 %>%
+  group_by(rcn, country) %>%
+  summarise(n = sum(contribution, na.rm = TRUE), 
+            .groups = "drop") %>%
+  pivot_wider(names_from = country, 
+              values_from = n, 
+              values_fill = 0)
+
+collaborations <- pivot %>%
+  select(-rcn) %>%
+  as.matrix() %>%
+  crossprod()
+
+# adjacency matrix
+collaborations <- h2020 %>%
+  select(rcn, country) %>%
+  table() %>%
+  crossprod()
+
+g_collab <- collaborations %>%
+  igraph::graph_from_adjacency_matrix(mode = "undirected",
+                                      weighted = TRUE)
+# remove same-country collaboration (diagonal 2x)
+g <- igraph::simplify(g_collab)
+node_size <-   igraph::strength(g) # ignore same-country collaboration
+edge_weight <- igraph::E(g)$weight
+
+point_coordinates <- igraph::layout_with_fr(g, weights = log(edge_weight))
+colnames(point_coordinates) <- c("x", "y")
+
+nodes <- 
+  point_coordinates %>%
+  as_tibble() %>%
+  mutate(country = names(igraph::V(g))) %>%
+  left_join(info_countries, by = "country") %>%
+  mutate(
+    status = str_to_upper(group),
+    country_name = countrycode(country, "eurostat", "country.name"),
+    s = node_size
+  ) %>%
+  arrange(s)
+
+edges <- get.data.frame(g) %>%
+  as_tibble() %>%
+  left_join(select(nodes, x:country), by = c("from" = "country")) %>%
+  rename(from_x = x, from_y = y) %>%
+  left_join(select(nodes, x:country), by = c("to" = "country")) %>%
+  rename(to_x = x, to_y = y) %>%
+  mutate(s = weight) %>%
+  arrange(s)
+
+ggplot() +
+  geom_segment(
+    data = edges,
+    aes(
+      x = from_x,
+      xend = to_x,
+      y = from_y,
+      yend = to_y,
+      size = s,
+      colour = s
+    ),
+    show.legend = FALSE
+  ) +
+  scale_color_gradient(low = rgb(0, 0, 0, .05), 
+                       high = rgb(0, 0, 0, .45)) +
+  geom_point(
+    data = nodes,
+    aes(x, y, size = s, fill = status),
+    pch = 21,
+    colour = "white"
+  ) +
+  scale_fill_manual(values = colorhunt) +
+  scale_size(range = c(.25, 15)) +
+  guides(
+    fill = guide_legend(override.aes = list(size = 7, shape = 21)),
+    color = "none",
+    size = "none") +
+  geom_text_repel(
+    data = nodes,
+    aes(x, y, label = country_name),
+    size = 5.5,
+    segment.color = NA,
+    bg.color = "white",
+    bg.r = 0.15
+  ) +
+  labs(title = "Log-Force-Directed Graph of H2020 Collaborations",
+       subtitle = "EU + Associated Countries, 2014-2020",
+       caption = "Source: CORDIS") +
+  theme_bw() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size = 25, face = "bold"),
+    plot.subtitle = element_text(size = 18),
+    plot.caption = element_text(size = 10),
+    legend.position = c(.95, .95),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 16),
+    legend.key.size = unit(2, "lines"),
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()
+  )
+```
+
+```{r, eval=FALSE}
 # re-calculate layout on log-scale of edge weight
 # spread core:
 point_coordinates <- g %>%
@@ -267,7 +483,7 @@ ggplot() +
     bg.r = 0.15
   ) +
   labs(title = "Log-Force-Directed Graph of H2020 Collaborations",
-       subtitle = "EU Countries + 7 Others, 2014-2020",
+       subtitle = "EU + Associated Countries, 2014-2020",
        caption = "Source: CORDIS") +
   theme_bw() +
   theme(
@@ -292,11 +508,11 @@ ggplot() +
 
 ---
 
-## Population Size
+## Pop., Collab. Contrib.
 
 Below, a log-log scale updated representation of Figure 2 from *[Network dynamics in collaborative research in the EU, 2003–2017](https://www.tandfonline.com/doi/figure/10.1080/09654313.2019.1641187)*.
 
-```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+```{r, warning=FALSE}
 population_table <- wbstats::wb_data(
   indicator = "SP.POP.TOTL",
   country = countrycode(pull(info_countries, country), "eurostat", "iso2c"),
@@ -306,13 +522,28 @@ population_table <- wbstats::wb_data(
   clean_names() %>%
   select(iso2c, population = sp_pop_totl)
 
-nodes <- nodes %>%
-  # for world bank compatibility
-  mutate(iso2c = countrycode(country, "eurostat", "iso2c")) %>%
-  left_join(population_table, by = "iso2c")
+funding <- h2020 %>%
+  group_by(country) %>%
+  summarise(contrib = sum(contribution, na.rm = TRUE),
+            .groups = "drop")
 
-ggplot(aes(population, s, label = country_name, col = status),
-       data = nodes) +
+collaborations <- h2020 %>%
+  # keep group information
+  group_by(group, country) %>%
+  summarise(n = n(),
+            .groups = "drop") %>%
+  # for world bank compatibility
+  mutate(
+    status = str_to_upper(group),
+    iso2c = countrycode(country, "eurostat", "iso2c"),
+    country_name = countrycode(country, "eurostat", "country.name")) %>%
+  left_join(population_table, by = "iso2c") %>%
+  left_join(funding, by = "country")
+```
+
+```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+ggplot(aes(population, n, label = country_name, col = status),
+       data = collaborations) +
   geom_smooth(
     method = "lm",
     se = FALSE,
@@ -330,10 +561,10 @@ ggplot(aes(population, s, label = country_name, col = status),
     show.legend = FALSE
   ) +
   scale_color_manual(values = colorhunt) +
-  scale_y_log10(labels = label_number(accuracy = 1, scale = 1e-3)) +
   scale_x_log10(labels = label_number(accuracy = 1, scale = 1e-6)) +
+  scale_y_log10(labels = label_number(accuracy = 1, scale = 1e-3)) +
   labs(
-    title = "H2020 Collaborations by Population",
+    title = "H2020 Collaborations and Population",
     subtitle = "Shown in log-log scale",
     caption = "Source: CORDIS, World Bank",
     color = element_blank(),
@@ -353,3 +584,94 @@ ggplot(aes(population, s, label = country_name, col = status),
     )
   )
 ```
+
+Related plots:
+
+```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+ggplot(aes(population, contrib, label = country_name, col = status),
+       data = collaborations) +
+  geom_smooth(
+    method = "lm",
+    se = FALSE,
+    col = "gray75",
+    linetype = "dotted",
+    size = .5
+  ) +
+  geom_point(size = 3, alpha = .8) +
+  geom_text_repel(
+    size = 5,
+    force = 2,
+    segment.alpha = 0.5,
+    bg.color = rgb(1, 1, 1, .5),
+    bg.r = 0.15,
+    show.legend = FALSE
+  ) +
+  scale_color_manual(values = colorhunt) +
+  scale_x_log10(labels = label_number(accuracy = 1, scale = 1e-6)) +
+  scale_y_log10(labels = label_number(accuracy = 1, scale = 1e-6)) +
+  labs(
+    title = "H2020 Contributions and Population",
+    subtitle = "Shown in log-log scale",
+    caption = "Source: CORDIS, World Bank",
+    color = element_blank(),
+    x = "Population (mio)",
+    y = "Total Contribution (mioEUR)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot",
+    legend.position = c(.1, .96),
+    legend.direction = "horizontal",
+    legend.key.size = unit(4, "mm"),
+    legend.background = element_rect(
+      linetype = "dotted",
+      fill = alpha("white", 1),
+      color = alpha("black", 0.25)
+    )
+  )
+```
+
+```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+ggplot(aes(n, contrib, label = country_name, col = status),
+       data = collaborations) +
+  geom_smooth(
+    method = "lm",
+    se = FALSE,
+    col = "gray75",
+    linetype = "dotted",
+    size = .5
+  ) +
+  geom_point(size = 3, alpha = .8) +
+  geom_text_repel(
+    size = 5,
+    force = 2,
+    segment.alpha = 0.5,
+    bg.color = rgb(1, 1, 1, .5),
+    bg.r = 0.15,
+    show.legend = FALSE
+  ) +
+  scale_color_manual(values = colorhunt) +
+  scale_x_log10(labels = label_number(accuracy = 1, scale = 1e-3)) +
+  scale_y_log10(labels = label_number(accuracy = 1, scale = 1e-6)) +
+  labs(
+    title = "H2020 Contributions and Collaborations",
+    subtitle = "Shown in log-log scale",
+    caption = "Source: CORDIS, World Bank",
+    color = element_blank(),
+    x = "No. Collaborations (k)",
+    y = "Total Contribution (mioEUR)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title.position = "plot",
+    legend.position = c(.1, .96),
+    legend.direction = "horizontal",
+    legend.key.size = unit(4, "mm"),
+    legend.background = element_rect(
+      linetype = "dotted",
+      fill = alpha("white", 1),
+      color = alpha("black", 0.25)
+    )
+  )
+```
+
