@@ -62,17 +62,6 @@ df <-
   read_csv()
   # mutate(group = fct_relevel(group, "eu15", "eu13", "ac", "tc"))
 
-
-
-df %>% 
-  count(funding_scheme, call, programme, sort = TRUE) %>%
-  filter(str_detect(call, regex("euratom", ignore_case = TRUE))) %>%
-  ## filter(str_detect(programme, "H2020-EU\\.2\\.1\\.[;]|H2020-EU\\.2\\.1\\.$")) %>%
-  print(n = 60)
-
-
-
-
 df <- df %>%
   # remove single-country projects and other countries
   filter(group %in% c("eu15", "eu13", "ac"), nunique > 1) %>%
@@ -217,7 +206,7 @@ edges <- g %>%
   rename(from_x = x, from_y = y) %>%
   left_join(select(nodes, x:country), by = c("to" = "country")) %>%
   rename(to_x = x, to_y = y) %>%
-  # mutate(s = (weight / 1000) ^ 2.5) %>% # ad-hoc
+  mutate(s = (weight / 1000) ^ 2.5) %>% # ad-hoc
   arrange(s)
 
 # separate rules to approach Nature's representation
