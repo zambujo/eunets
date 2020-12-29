@@ -50,13 +50,14 @@ conflict_prefer("filter", "dplyr")
 
 # credits: https://colorhunt.co/palette/180404
 colorhunt <- c("#fcbf1e", "#40bad5", "#035aa6")
+source(here("R", "global.R"))
 ```
 
 ### Data Cleaning
 
 Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
 
-```{r, message=FALSE, warning=FALSE}
+```{r df-to-graph, message=FALSE, warning=FALSE}
 h2020 <-
   here("data", "h2020.csv") %>%
   read_csv()
@@ -120,9 +121,37 @@ edges <- get.data.frame(g) %>%
 
 ## Horizon 2020 Network
 
+
+### Centrality measures
+
+```{r centrality}
+
+df_eigen <- eigen_centrality(g, directed = FALSE) %>%
+  pluck("vector") %>%
+  list_to_df(c("eigen", "country"))
+
+df_degree <- strength(g) %>%
+  list_to_df(c("degree", "country"))
+
+df_centrality <- df_eigen %>%
+  left_join(df_degree, by = "country") %>%
+  select(country, everything()) %>%
+  mutate(
+    eigen = 1000 * eigen,
+    eigen_rank = rank(eigen),
+    degree_rank = rank(degree),
+    eigen_rank = 1 + max(eigen_rank) - eigen_rank,
+    degree_rank = 1 + max(degree_rank) - degree_rank) %>%
+  arrange(country)
+
+kable(df_centrality)
+```
+
+
+
 ### Raw Graph
 
-```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+```{r plot-raw-graph, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 ggplot() +
   geom_segment(
     data = edges,
@@ -184,9 +213,10 @@ ggplot() +
 
 Difficult to perceive differences between the core countries.
 
+
 ### Log-Scaled Weighting
 
-```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+```{r raw-log-scale, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 # recalculating point coordinates using "log(edge weights)"
 point_coordinates <- igraph::layout_with_fr(g, weights = log(edge_weight))
 colnames(point_coordinates) <- c("x", "y")
@@ -273,7 +303,7 @@ ggplot() +
 
 ### Log-Scaled w/ Contribution Weighting 
 
-```{r, eval=FALSE}
+```{r boxplot-role-contrib, eval=FALSE}
 h2020 %>%
   ggplot(aes(role, contribution)) +
   geom_boxplot() + 
@@ -284,7 +314,7 @@ h2020 %>%
 
 Re-calculating weights using country-specific financial contributions:
 
-```{r, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+```{r contrib-graph, message=FALSE, warning=FALSE}
 pivot <- h2020 %>%
   group_by(rcn, country) %>%
   summarise(n = sum(contribution, na.rm = TRUE), 
@@ -335,7 +365,9 @@ edges <- get.data.frame(g) %>%
   rename(to_x = x, to_y = y) %>%
   mutate(s = weight) %>%
   arrange(s)
+```
 
+```{r plot-contrib-graph, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
 ggplot() +
   geom_segment(
     data = edges,
@@ -506,9 +538,10 @@ ggplot() +
   )
 ```
 
+
 ---
 
-## Pop., Collab. Contrib.
+## Pop., Collab., Contrib.
 
 Below, a log-log scale updated representation of Figure 2 from *[Network dynamics in collaborative research in the EU, 2003–2017](https://www.tandfonline.com/doi/figure/10.1080/09654313.2019.1641187)*.
 
