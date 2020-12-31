@@ -1,5 +1,6 @@
 ---
 title: "H2020 Country Collaboration Network"
+subtitle: "Exploratory analysis"
 author: "Joao Martins"
 knit: (function(inputFile, encoding) {
          rmarkdown::render(inputFile,
@@ -45,6 +46,7 @@ library(igraph)
 library(yaml)
 library(here)
 library(knitr)
+library(DT)
 library(conflicted)
 conflict_prefer("filter", "dplyr")
 
@@ -57,24 +59,23 @@ source(here("R", "global.R"))
 
 Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.
 
-```{r df-to-graph, message=FALSE, warning=FALSE}
+```{r df-to-graph}
 h2020 <-
   here("data", "h2020.csv") %>%
   read_csv()
-  # mutate(group = fct_relevel(group, "eu15", "eu13", "ac", "tc"))
 
-h2020 <- h2020 %>%
-  # remove single-country projects and other countries
+# country participation size
+country_participation <- h2020 %>%
+  count(country, sort = TRUE)
+
+df_collab <- h2020 %>%
+  # removes third-countries and single-country projects
   filter(group %in% c("eu15", "eu13", "ac"), nunique > 1)
-
-info_countries <- h2020 %>%
-  distinct(country, group) %>%
-  arrange(country)
 
 # building the graph ------------------------------------------------------
 
 # adjacency matrix
-pivot <- h2020 %>%
+pivot <- df_collab %>%
   group_by(rcn, country) %>%
   summarise(n = n(), .groups = "drop") %>%
   pivot_wider(names_from = country, 
@@ -89,9 +90,10 @@ collaborations <- pivot %>%
 g_collab <- collaborations %>%
   igraph::graph_from_adjacency_matrix(mode = "undirected",
                                       weighted = TRUE)
-# remove same-country collaboration (diagonal 2x)
 g <- igraph::simplify(g_collab)
-node_size <-   igraph::strength(g) # ignore same-country collaboration
+     ## remove same-country collaboration
+     ## same as removing diagonal 2x
+node_size <-   igraph::strength(g)
 edge_weight <- igraph::E(g)$weight
 
 point_coordinates <- igraph::layout_with_fr(g, weights = edge_weight)
@@ -101,7 +103,7 @@ nodes <-
   point_coordinates %>%
   as_tibble() %>%
   mutate(country = names(igraph::V(g))) %>%
-  left_join(info_countries, by = "country") %>%
+  left_join(info_country, by = "country") %>%
   mutate(
     status = str_to_upper(group),
     country_name = countrycode(country, "eurostat", "country.name"),
@@ -121,11 +123,9 @@ edges <- get.data.frame(g) %>%
 
 ## Horizon 2020 Network
 
-
 ### Centrality measures
 
 ```{r centrality}
-
 df_eigen <- eigen_centrality(g, directed = FALSE) %>%
   pluck("vector") %>%
   list_to_df(c("eigen", "country"))
@@ -137,21 +137,21 @@ df_centrality <- df_eigen %>%
   left_join(df_degree, by = "country") %>%
   select(country, everything()) %>%
   mutate(
-    eigen = 1000 * eigen,
+    eigen = round(1000 * eigen, 3),
+    degree = round(degree / 1000, 3),
     eigen_rank = rank(eigen),
-    degree_rank = rank(degree),
     eigen_rank = 1 + max(eigen_rank) - eigen_rank,
-    degree_rank = 1 + max(degree_rank) - degree_rank) %>%
+    degree_rank = rank(degree),
+    degree_rank = 1 + max(degree_rank) - degree_rank
+  ) %>%
   arrange(country)
 
-kable(df_centrality)
+datatable(df_centrality, rownames = FALSE)
 ```
-
-
 
 ### Raw Graph
 
-```{r plot-raw-graph, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+```{r plot-raw-graph, fig.width=9, fig.height=9}
 ggplot() +
   geom_segment(
     data = edges,
@@ -216,7 +216,7 @@ Difficult to perceive differences between the core countries.
 
 ### Log-Scaled Weighting
 
-```{r raw-log-scale, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+```{r raw-log-scale}
 # recalculating point coordinates using "log(edge weights)"
 point_coordinates <- igraph::layout_with_fr(g, weights = log(edge_weight))
 colnames(point_coordinates) <- c("x", "y")
@@ -225,7 +225,7 @@ nodes <-
   point_coordinates %>%
   as_tibble() %>%
   mutate(country = names(igraph::V(g))) %>%
-  left_join(info_countries, by = "country") %>%
+  left_join(info_country, by = "country") %>%
   mutate(
     status = str_to_upper(group),
     country_name = countrycode(country, "eurostat", "country.name"),
@@ -241,7 +241,9 @@ edges <- get.data.frame(g) %>%
   rename(to_x = x, to_y = y) %>%
   mutate(s = weight) %>%
   arrange(s)
+```
 
+```{r plot-raw-log-scale, fig.width=9, fig.height=9}
 ggplot() +
   geom_segment(
     data = edges,
@@ -304,7 +306,7 @@ ggplot() +
 ### Log-Scaled w/ Contribution Weighting 
 
 ```{r boxplot-role-contrib, eval=FALSE}
-h2020 %>%
+df_collab %>%
   ggplot(aes(role, contribution)) +
   geom_boxplot() + 
   scale_y_log10(labels = label_number(accuracy = 1)) +
@@ -314,8 +316,8 @@ h2020 %>%
 
 Re-calculating weights using country-specific financial contributions:
 
-```{r contrib-graph, message=FALSE, warning=FALSE}
-pivot <- h2020 %>%
+```{r contrib-graph}
+pivot <- df_collab %>%
   group_by(rcn, country) %>%
   summarise(n = sum(contribution, na.rm = TRUE), 
             .groups = "drop") %>%
@@ -326,12 +328,6 @@ pivot <- h2020 %>%
 collaborations <- pivot %>%
   select(-rcn) %>%
   as.matrix() %>%
-  crossprod()
-
-# adjacency matrix
-collaborations <- h2020 %>%
-  select(rcn, country) %>%
-  table() %>%
   crossprod()
 
 g_collab <- collaborations %>%
@@ -349,7 +345,7 @@ nodes <-
   point_coordinates %>%
   as_tibble() %>%
   mutate(country = names(igraph::V(g))) %>%
-  left_join(info_countries, by = "country") %>%
+  left_join(info_country, by = "country") %>%
   mutate(
     status = str_to_upper(group),
     country_name = countrycode(country, "eurostat", "country.name"),
@@ -367,7 +363,7 @@ edges <- get.data.frame(g) %>%
   arrange(s)
 ```
 
-```{r plot-contrib-graph, fig.width=9, fig.height=9, message=FALSE, warning=FALSE}
+```{r plot-contrib-graph, fig.width=9, fig.height=9}
 ggplot() +
   geom_segment(
     data = edges,
@@ -427,7 +423,7 @@ ggplot() +
   )
 ```
 
-```{r, eval=FALSE}
+```{r max-spanning-tree, eval=FALSE}
 # re-calculate layout on log-scale of edge weight
 # spread core:
 point_coordinates <- g %>%
@@ -439,7 +435,7 @@ nodes <-
   point_coordinates %>%
   as_tibble() %>%
   mutate(country = names(igraph::V(g))) %>%
-  left_join(info_countries, by = "country") %>%
+  left_join(info_country, by = "country") %>%
   mutate(
     status = str_to_upper(group),
     country_name = countrycode(country, "eurostat", "country.name"),
@@ -477,65 +473,6 @@ outer_edges <- outer_edges %>%
 edges <- core_edges %>%
   bind_rows(outer_edges) %>%
   arrange(s) # plot stronger edges last
-
-ggplot() +
-  geom_segment(
-    data = edges,
-    aes(
-      x = from_x,
-      xend = to_x,
-      y = from_y,
-      yend = to_y,
-      size = s,
-      colour = s
-    ),
-    show.legend = FALSE
-  ) +
-  scale_color_gradient(low = "gray90", high = "gray45") +
-  geom_point(
-    data = nodes,
-    aes(x, y, size = s, fill = status),
-    pch = 21,
-    colour = "white"
-  ) +
-  scale_fill_manual(values = colorhunt) +
-  scale_size(range = c(.75, 16)) +
-  guides(
-    fill = guide_legend(override.aes = list(size = 7, shape = 21)),
-    color = "none",
-    size = "none") +
-  geom_text_repel(
-    data = nodes,
-    aes(x, y, label = country_name),
-    size = 5.5,
-    force = 3,
-    segment.color = NA,
-    box.padding = unit(.8, "lines"),
-    bg.color = "white",
-    bg.r = 0.15
-  ) +
-  labs(title = "Log-Force-Directed Graph of H2020 Collaborations",
-       subtitle = "EU + Associated Countries, 2014-2020",
-       caption = "Source: CORDIS") +
-  theme_bw() +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(size = 25, face = "bold"),
-    plot.subtitle = element_text(size = 18),
-    plot.caption = element_text(size = 10),
-    legend.position = c(.95, .95),
-    legend.title = element_blank(),
-    legend.text = element_text(size = 16),
-    legend.key.size = unit(2, "lines"),
-    axis.title = element_blank(),
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    axis.line = element_blank(),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
-    panel.background = element_blank()
-  )
 ```
 
 
@@ -545,22 +482,22 @@ ggplot() +
 
 Below, a log-log scale updated representation of Figure 2 from *[Network dynamics in collaborative research in the EU, 2003–2017](https://www.tandfonline.com/doi/figure/10.1080/09654313.2019.1641187)*.
 
-```{r, warning=FALSE}
+```{r}
 population_table <- wbstats::wb_data(
   indicator = "SP.POP.TOTL",
-  country = countrycode(pull(info_countries, country), "eurostat", "iso2c"),
+  country = countrycode(pull(info_country, country), "eurostat", "iso2c"),
   start_date = 2017,
   end_date = 2017
 ) %>%
   clean_names() %>%
   select(iso2c, population = sp_pop_totl)
 
-funding <- h2020 %>%
+funding <- df_collab %>%
   group_by(country) %>%
   summarise(contrib = sum(contribution, na.rm = TRUE),
             .groups = "drop")
 
-collaborations <- h2020 %>%
+collaborations <- df_collab %>%
   # keep group information
   group_by(group, country) %>%
   summarise(n = n(),
@@ -574,7 +511,7 @@ collaborations <- h2020 %>%
   left_join(funding, by = "country")
 ```
 
-```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+```{r, fig.width=9, fig.height=7}
 ggplot(aes(population, n, label = country_name, col = status),
        data = collaborations) +
   geom_smooth(
@@ -620,7 +557,7 @@ ggplot(aes(population, n, label = country_name, col = status),
 
 Related plots:
 
-```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+```{r, fig.width=9, fig.height=7}
 ggplot(aes(population, contrib, label = country_name, col = status),
        data = collaborations) +
   geom_smooth(
@@ -664,7 +601,7 @@ ggplot(aes(population, contrib, label = country_name, col = status),
   )
 ```
 
-```{r, fig.width=9, fig.height=7, message=FALSE, warning=FALSE}
+```{r, fig.width=9, fig.height=7}
 ggplot(aes(n, contrib, label = country_name, col = status),
        data = collaborations) +
   geom_smooth(

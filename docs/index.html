@@ -15,7 +15,7 @@
 <title>H2020 Country Collaboration Network</title>
 
 <script src="index_files/header-attrs-2.6/header-attrs.js"></script>
-<script src="index_files/jquery-1.11.3/jquery.min.js"></script>
+<script src="index_files/jquery-1.12.4/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="index_files/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
 <script src="index_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -26,6 +26,14 @@
 <script src="index_files/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="index_files/navigation-1.1/tabsets.js"></script>
 <script src="index_files/navigation-1.1/codefolding.js"></script>
+<script src="index_files/htmlwidgets-1.5.3/htmlwidgets.js"></script>
+<link href="index_files/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+<script src="index_files/datatables-binding-0.16/datatables.js"></script>
+<link href="index_files/dt-core-1.10.20/css/jquery.dataTables.min.css" rel="stylesheet" />
+<link href="index_files/dt-core-1.10.20/css/jquery.dataTables.extra.css" rel="stylesheet" />
+<script src="index_files/dt-core-1.10.20/js/jquery.dataTables.min.js"></script>
+<link href="index_files/crosstalk-1.1.0.1/css/crosstalk.css" rel="stylesheet" />
+<script src="index_files/crosstalk-1.1.0.1/js/crosstalk.min.js"></script>
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -360,6 +368,7 @@ div.tocify {
 
 
 <h1 class="title toc-ignore">H2020 Country Collaboration Network</h1>
+<h3 class="subtitle">Exploratory analysis</h3>
 <h4 class="author">Joao Martins</h4>
 
 </div>
@@ -387,628 +396,211 @@ div.tocify {
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a><span class="kw">library</span>(yaml)</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a><span class="kw">library</span>(here)</span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a><span class="kw">library</span>(knitr)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a><span class="kw">library</span>(conflicted)</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a><span class="kw">conflict_prefer</span>(<span class="st">&quot;filter&quot;</span>, <span class="st">&quot;dplyr&quot;</span>)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a><span class="co"># credits: https://colorhunt.co/palette/180404</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a>colorhunt &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;#fcbf1e&quot;</span>, <span class="st">&quot;#40bad5&quot;</span>, <span class="st">&quot;#035aa6&quot;</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a><span class="kw">source</span>(<span class="kw">here</span>(<span class="st">&quot;R&quot;</span>, <span class="st">&quot;global.R&quot;</span>))</span></code></pre></div>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a><span class="kw">library</span>(DT)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a><span class="kw">library</span>(conflicted)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a><span class="kw">conflict_prefer</span>(<span class="st">&quot;filter&quot;</span>, <span class="st">&quot;dplyr&quot;</span>)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true"></a><span class="co"># credits: https://colorhunt.co/palette/180404</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true"></a>colorhunt &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;#fcbf1e&quot;</span>, <span class="st">&quot;#40bad5&quot;</span>, <span class="st">&quot;#035aa6&quot;</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true"></a><span class="kw">source</span>(<span class="kw">here</span>(<span class="st">&quot;R&quot;</span>, <span class="st">&quot;global.R&quot;</span>))</span></code></pre></div>
 <div id="data-cleaning" class="section level3">
 <h3>Data Cleaning</h3>
 <p>Below, we transform the raw data to calculate an adjacency matrix containing pairwise counts for the number of times countries participate in projects jointly, either as project coordinators or participants.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>h2020 &lt;-</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">here</span>(<span class="st">&quot;data&quot;</span>, <span class="st">&quot;h2020.csv&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">read_csv</span>()</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>  <span class="co"># mutate(group = fct_relevel(group, &quot;eu15&quot;, &quot;eu13&quot;, &quot;ac&quot;, &quot;tc&quot;))</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>h2020 &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a><span class="st">  </span><span class="co"># remove single-country projects and other countries</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a><span class="st">  </span><span class="kw">filter</span>(group <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;eu15&quot;</span>, <span class="st">&quot;eu13&quot;</span>, <span class="st">&quot;ac&quot;</span>), nunique <span class="op">&gt;</span><span class="st"> </span><span class="dv">1</span>)</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a>info_countries &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">distinct</span>(country, group) <span class="op">%&gt;%</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(country)</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a><span class="co"># building the graph ------------------------------------------------------</span></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a><span class="co"># adjacency matrix</span></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true"></a>pivot &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(rcn, country) <span class="op">%&gt;%</span></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">n =</span> <span class="kw">n</span>(), <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> country, </span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true"></a>              <span class="dt">values_from =</span> n, </span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true"></a>              <span class="dt">values_fill =</span> <span class="dv">0</span>)</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true"></a></span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>pivot <span class="op">%&gt;%</span></span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>rcn) <span class="op">%&gt;%</span></span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true"></a><span class="st">  </span><span class="kw">as.matrix</span>() <span class="op">%&gt;%</span></span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true"></a><span class="st">  </span><span class="kw">crossprod</span>()</span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true"></a></span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true"></a>g_collab &lt;-<span class="st"> </span>collaborations <span class="op">%&gt;%</span></span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true"></a><span class="st">  </span>igraph<span class="op">::</span><span class="kw">graph_from_adjacency_matrix</span>(<span class="dt">mode =</span> <span class="st">&quot;undirected&quot;</span>,</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true"></a>                                      <span class="dt">weighted =</span> <span class="ot">TRUE</span>)</span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true"></a><span class="co"># remove same-country collaboration (diagonal 2x)</span></span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true"></a>g &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">simplify</span>(g_collab)</span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true"></a>node_size &lt;-<span class="st">   </span>igraph<span class="op">::</span><span class="kw">strength</span>(g) <span class="co"># ignore same-country collaboration</span></span>
-<span id="cb2-35"><a href="#cb2-35" aria-hidden="true"></a>edge_weight &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">E</span>(g)<span class="op">$</span>weight</span>
-<span id="cb2-36"><a href="#cb2-36" aria-hidden="true"></a></span>
-<span id="cb2-37"><a href="#cb2-37" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(g, <span class="dt">weights =</span> edge_weight)</span>
-<span id="cb2-38"><a href="#cb2-38" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
-<span id="cb2-39"><a href="#cb2-39" aria-hidden="true"></a></span>
-<span id="cb2-40"><a href="#cb2-40" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
-<span id="cb2-41"><a href="#cb2-41" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
-<span id="cb2-42"><a href="#cb2-42" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb2-43"><a href="#cb2-43" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
-<span id="cb2-44"><a href="#cb2-44" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_countries, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb2-45"><a href="#cb2-45" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
-<span id="cb2-46"><a href="#cb2-46" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
-<span id="cb2-47"><a href="#cb2-47" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
-<span id="cb2-48"><a href="#cb2-48" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
-<span id="cb2-49"><a href="#cb2-49" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
-<span id="cb2-50"><a href="#cb2-50" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
-<span id="cb2-51"><a href="#cb2-51" aria-hidden="true"></a></span>
-<span id="cb2-52"><a href="#cb2-52" aria-hidden="true"></a>edges &lt;-<span class="st"> </span><span class="kw">get.data.frame</span>(g) <span class="op">%&gt;%</span></span>
-<span id="cb2-53"><a href="#cb2-53" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb2-54"><a href="#cb2-54" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb2-55"><a href="#cb2-55" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb2-56"><a href="#cb2-56" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb2-57"><a href="#cb2-57" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb2-58"><a href="#cb2-58" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> weight) <span class="op">%&gt;%</span></span>
-<span id="cb2-59"><a href="#cb2-59" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span></code></pre></div>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">read_csv</span>()</span></code></pre></div>
+<pre><code>## 
+## ── Column specification ────────────────────────────────────────────────────────
+## cols(
+##   rcn = col_double(),
+##   role = col_character(),
+##   pic = col_double(),
+##   type = col_character(),
+##   contribution = col_double(),
+##   country = col_character(),
+##   start_date = col_date(format = &quot;&quot;),
+##   end_date = col_date(format = &quot;&quot;),
+##   max_contribution = col_double(),
+##   total_cost = col_double(),
+##   start_year = col_double(),
+##   end_year = col_double(),
+##   duration = col_double(),
+##   group = col_character(),
+##   nunique = col_double()
+## )</code></pre>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co"># country participation size</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>country_participation &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">count</span>(country, <span class="dt">sort =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>df_collab &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a><span class="st">  </span><span class="co"># removes third-countries and single-country projects</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a><span class="st">  </span><span class="kw">filter</span>(group <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;eu15&quot;</span>, <span class="st">&quot;eu13&quot;</span>, <span class="st">&quot;ac&quot;</span>), nunique <span class="op">&gt;</span><span class="st"> </span><span class="dv">1</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a><span class="co"># building the graph ------------------------------------------------------</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a><span class="co"># adjacency matrix</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a>pivot &lt;-<span class="st"> </span>df_collab <span class="op">%&gt;%</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(rcn, country) <span class="op">%&gt;%</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">n =</span> <span class="kw">n</span>(), <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> country, </span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a>              <span class="dt">values_from =</span> n, </span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a>              <span class="dt">values_fill =</span> <span class="dv">0</span>)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>pivot <span class="op">%&gt;%</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>rcn) <span class="op">%&gt;%</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">as.matrix</span>() <span class="op">%&gt;%</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">crossprod</span>()</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true"></a></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true"></a>g_collab &lt;-<span class="st"> </span>collaborations <span class="op">%&gt;%</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true"></a><span class="st">  </span>igraph<span class="op">::</span><span class="kw">graph_from_adjacency_matrix</span>(<span class="dt">mode =</span> <span class="st">&quot;undirected&quot;</span>,</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true"></a>                                      <span class="dt">weighted =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true"></a>g &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">simplify</span>(g_collab)</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true"></a>     <span class="co">## remove same-country collaboration</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true"></a>     <span class="co">## same as removing diagonal 2x</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true"></a>node_size &lt;-<span class="st">   </span>igraph<span class="op">::</span><span class="kw">strength</span>(g)</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true"></a>edge_weight &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">E</span>(g)<span class="op">$</span>weight</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(g, <span class="dt">weights =</span> edge_weight)</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true"></a></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_country, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true"></a></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true"></a>edges &lt;-<span class="st"> </span><span class="kw">get.data.frame</span>(g) <span class="op">%&gt;%</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> weight) <span class="op">%&gt;%</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span></code></pre></div>
 </div>
 </div>
 <div id="horizon-2020-network" class="section level2">
 <h2>Horizon 2020 Network</h2>
 <div id="centrality-measures" class="section level3">
 <h3>Centrality measures</h3>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>df_eigen &lt;-<span class="st"> </span><span class="kw">eigen_centrality</span>(g, <span class="dt">directed =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">pluck</span>(<span class="st">&quot;vector&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">list_to_df</span>(<span class="kw">c</span>(<span class="st">&quot;eigen&quot;</span>, <span class="st">&quot;country&quot;</span>))</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>df_degree &lt;-<span class="st"> </span><span class="kw">strength</span>(g) <span class="op">%&gt;%</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a><span class="st">  </span><span class="kw">list_to_df</span>(<span class="kw">c</span>(<span class="st">&quot;degree&quot;</span>, <span class="st">&quot;country&quot;</span>))</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>df_centrality &lt;-<span class="st"> </span>df_eigen <span class="op">%&gt;%</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(df_degree, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(country, <span class="kw">everything</span>()) <span class="op">%&gt;%</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>    <span class="dt">eigen =</span> <span class="dv">1000</span> <span class="op">*</span><span class="st"> </span>eigen,</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a>    <span class="dt">eigen_rank =</span> <span class="kw">rank</span>(eigen),</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true"></a>    <span class="dt">degree_rank =</span> <span class="kw">rank</span>(degree),</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true"></a>    <span class="dt">eigen_rank =</span> <span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">max</span>(eigen_rank) <span class="op">-</span><span class="st"> </span>eigen_rank,</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true"></a>    <span class="dt">degree_rank =</span> <span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">max</span>(degree_rank) <span class="op">-</span><span class="st"> </span>degree_rank) <span class="op">%&gt;%</span></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(country)</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true"></a></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true"></a><span class="kw">kable</span>(df_centrality)</span></code></pre></div>
-<table>
-<thead>
-<tr class="header">
-<th align="left">country</th>
-<th align="right">eigen</th>
-<th align="right">degree</th>
-<th align="right">eigen_rank</th>
-<th align="right">degree_rank</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">AL</td>
-<td align="right">2.580333</td>
-<td align="right">821</td>
-<td align="right">41</td>
-<td align="right">41</td>
-</tr>
-<tr class="even">
-<td align="left">AM</td>
-<td align="right">1.186955</td>
-<td align="right">485</td>
-<td align="right">44</td>
-<td align="right">44</td>
-</tr>
-<tr class="odd">
-<td align="left">AT</td>
-<td align="right">305.491648</td>
-<td align="right">60123</td>
-<td align="right">10</td>
-<td align="right">10</td>
-</tr>
-<tr class="even">
-<td align="left">BA</td>
-<td align="right">3.834822</td>
-<td align="right">1056</td>
-<td align="right">38</td>
-<td align="right">39</td>
-</tr>
-<tr class="odd">
-<td align="left">BE</td>
-<td align="right">490.663915</td>
-<td align="right">97938</td>
-<td align="right">7</td>
-<td align="right">7</td>
-</tr>
-<tr class="even">
-<td align="left">BG</td>
-<td align="right">48.718635</td>
-<td align="right">11601</td>
-<td align="right">24</td>
-<td align="right">24</td>
-</tr>
-<tr class="odd">
-<td align="left">CH</td>
-<td align="right">281.787525</td>
-<td align="right">52895</td>
-<td align="right">11</td>
-<td align="right">11</td>
-</tr>
-<tr class="even">
-<td align="left">CY</td>
-<td align="right">46.868347</td>
-<td align="right">11074</td>
-<td align="right">25</td>
-<td align="right">25</td>
-</tr>
-<tr class="odd">
-<td align="left">CZ</td>
-<td align="right">111.519507</td>
-<td align="right">23817</td>
-<td align="right">18</td>
-<td align="right">18</td>
-</tr>
-<tr class="even">
-<td align="left">DE</td>
-<td align="right">1000.000000</td>
-<td align="right">219321</td>
-<td align="right">1</td>
-<td align="right">1</td>
-</tr>
-<tr class="odd">
-<td align="left">DK</td>
-<td align="right">193.768365</td>
-<td align="right">39293</td>
-<td align="right">14</td>
-<td align="right">14</td>
-</tr>
-<tr class="even">
-<td align="left">EE</td>
-<td align="right">44.507016</td>
-<td align="right">10425</td>
-<td align="right">26</td>
-<td align="right">26</td>
-</tr>
-<tr class="odd">
-<td align="left">EL</td>
-<td align="right">322.560718</td>
-<td align="right">65863</td>
-<td align="right">8</td>
-<td align="right">8</td>
-</tr>
-<tr class="even">
-<td align="left">ES</td>
-<td align="right">854.021106</td>
-<td align="right">179137</td>
-<td align="right">2</td>
-<td align="right">2</td>
-</tr>
-<tr class="odd">
-<td align="left">FI</td>
-<td align="right">229.128035</td>
-<td align="right">46673</td>
-<td align="right">12</td>
-<td align="right">12</td>
-</tr>
-<tr class="even">
-<td align="left">FO</td>
-<td align="right">2.053717</td>
-<td align="right">531</td>
-<td align="right">43</td>
-<td align="right">43</td>
-</tr>
-<tr class="odd">
-<td align="left">FR</td>
-<td align="right">780.072845</td>
-<td align="right">155731</td>
-<td align="right">5</td>
-<td align="right">5</td>
-</tr>
-<tr class="even">
-<td align="left">GE</td>
-<td align="right">2.749868</td>
-<td align="right">914</td>
-<td align="right">40</td>
-<td align="right">40</td>
-</tr>
-<tr class="odd">
-<td align="left">HR</td>
-<td align="right">38.692279</td>
-<td align="right">9121</td>
-<td align="right">27</td>
-<td align="right">27</td>
-</tr>
-<tr class="even">
-<td align="left">HU</td>
-<td align="right">92.946518</td>
-<td align="right">20141</td>
-<td align="right">19</td>
-<td align="right">19</td>
-</tr>
-<tr class="odd">
-<td align="left">IE</td>
-<td align="right">153.002651</td>
-<td align="right">31505</td>
-<td align="right">17</td>
-<td align="right">17</td>
-</tr>
-<tr class="even">
-<td align="left">IL</td>
-<td align="right">88.193209</td>
-<td align="right">17286</td>
-<td align="right">20</td>
-<td align="right">21</td>
-</tr>
-<tr class="odd">
-<td align="left">IS</td>
-<td align="right">18.677803</td>
-<td align="right">4377</td>
-<td align="right">33</td>
-<td align="right">33</td>
-</tr>
-<tr class="even">
-<td align="left">IT</td>
-<td align="right">832.924868</td>
-<td align="right">171861</td>
-<td align="right">3</td>
-<td align="right">3</td>
-</tr>
-<tr class="odd">
-<td align="left">LT</td>
-<td align="right">33.529315</td>
-<td align="right">8011</td>
-<td align="right">30</td>
-<td align="right">29</td>
-</tr>
-<tr class="even">
-<td align="left">LU</td>
-<td align="right">34.375264</td>
-<td align="right">7553</td>
-<td align="right">29</td>
-<td align="right">31</td>
-</tr>
-<tr class="odd">
-<td align="left">LV</td>
-<td align="right">30.052031</td>
-<td align="right">7629</td>
-<td align="right">31</td>
-<td align="right">30</td>
-</tr>
-<tr class="even">
-<td align="left">MD</td>
-<td align="right">3.223962</td>
-<td align="right">1086</td>
-<td align="right">39</td>
-<td align="right">38</td>
-</tr>
-<tr class="odd">
-<td align="left">ME</td>
-<td align="right">2.499725</td>
-<td align="right">781</td>
-<td align="right">42</td>
-<td align="right">42</td>
-</tr>
-<tr class="even">
-<td align="left">MK</td>
-<td align="right">4.643846</td>
-<td align="right">1425</td>
-<td align="right">37</td>
-<td align="right">36</td>
-</tr>
-<tr class="odd">
-<td align="left">MT</td>
-<td align="right">10.233909</td>
-<td align="right">2590</td>
-<td align="right">35</td>
-<td align="right">35</td>
-</tr>
-<tr class="even">
-<td align="left">NL</td>
-<td align="right">586.629245</td>
-<td align="right">116084</td>
-<td align="right">6</td>
-<td align="right">6</td>
-</tr>
-<tr class="odd">
-<td align="left">NO</td>
-<td align="right">181.772164</td>
-<td align="right">37560</td>
-<td align="right">15</td>
-<td align="right">15</td>
-</tr>
-<tr class="even">
-<td align="left">PL</td>
-<td align="right">155.587931</td>
-<td align="right">32834</td>
-<td align="right">16</td>
-<td align="right">16</td>
-</tr>
-<tr class="odd">
-<td align="left">PT</td>
-<td align="right">215.446414</td>
-<td align="right">44288</td>
-<td align="right">13</td>
-<td align="right">13</td>
-</tr>
-<tr class="even">
-<td align="left">RO</td>
-<td align="right">84.580236</td>
-<td align="right">19253</td>
-<td align="right">21</td>
-<td align="right">20</td>
-</tr>
-<tr class="odd">
-<td align="left">RS</td>
-<td align="right">26.620633</td>
-<td align="right">6210</td>
-<td align="right">32</td>
-<td align="right">32</td>
-</tr>
-<tr class="even">
-<td align="left">SE</td>
-<td align="right">310.171991</td>
-<td align="right">60808</td>
-<td align="right">9</td>
-<td align="right">9</td>
-</tr>
-<tr class="odd">
-<td align="left">SI</td>
-<td align="right">75.889826</td>
-<td align="right">16926</td>
-<td align="right">22</td>
-<td align="right">22</td>
-</tr>
-<tr class="even">
-<td align="left">SK</td>
-<td align="right">37.134403</td>
-<td align="right">8803</td>
-<td align="right">28</td>
-<td align="right">28</td>
-</tr>
-<tr class="odd">
-<td align="left">TN</td>
-<td align="right">5.646600</td>
-<td align="right">1222</td>
-<td align="right">36</td>
-<td align="right">37</td>
-</tr>
-<tr class="even">
-<td align="left">TR</td>
-<td align="right">65.274217</td>
-<td align="right">13633</td>
-<td align="right">23</td>
-<td align="right">23</td>
-</tr>
-<tr class="odd">
-<td align="left">UA</td>
-<td align="right">12.134853</td>
-<td align="right">2981</td>
-<td align="right">34</td>
-<td align="right">34</td>
-</tr>
-<tr class="even">
-<td align="left">UK</td>
-<td align="right">781.329507</td>
-<td align="right">156730</td>
-<td align="right">4</td>
-<td align="right">4</td>
-</tr>
-</tbody>
-</table>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a>df_eigen &lt;-<span class="st"> </span><span class="kw">eigen_centrality</span>(g, <span class="dt">directed =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">pluck</span>(<span class="st">&quot;vector&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">list_to_df</span>(<span class="kw">c</span>(<span class="st">&quot;eigen&quot;</span>, <span class="st">&quot;country&quot;</span>))</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>df_degree &lt;-<span class="st"> </span><span class="kw">strength</span>(g) <span class="op">%&gt;%</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a><span class="st">  </span><span class="kw">list_to_df</span>(<span class="kw">c</span>(<span class="st">&quot;degree&quot;</span>, <span class="st">&quot;country&quot;</span>))</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>df_centrality &lt;-<span class="st"> </span>df_eigen <span class="op">%&gt;%</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(df_degree, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(country, <span class="kw">everything</span>()) <span class="op">%&gt;%</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>    <span class="dt">eigen =</span> <span class="kw">round</span>(<span class="dv">1000</span> <span class="op">*</span><span class="st"> </span>eigen, <span class="dv">3</span>),</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>    <span class="dt">degree =</span> <span class="kw">round</span>(degree <span class="op">/</span><span class="st"> </span><span class="dv">1000</span>, <span class="dv">3</span>),</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>    <span class="dt">eigen_rank =</span> <span class="kw">rank</span>(eigen),</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a>    <span class="dt">eigen_rank =</span> <span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">max</span>(eigen_rank) <span class="op">-</span><span class="st"> </span>eigen_rank,</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a>    <span class="dt">degree_rank =</span> <span class="kw">rank</span>(degree),</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true"></a>    <span class="dt">degree_rank =</span> <span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">max</span>(degree_rank) <span class="op">-</span><span class="st"> </span>degree_rank</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(country)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true"></a><span class="kw">datatable</span>(df_centrality, <span class="dt">rownames =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<div id="htmlwidget-875ba4374cc0f54dabe0" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-875ba4374cc0f54dabe0">{"x":{"filter":"none","data":[["AL","AM","AT","BA","BE","BG","CH","CY","CZ","DE","DK","EE","EL","ES","FI","FO","FR","GE","HR","HU","IE","IL","IS","IT","LT","LU","LV","MD","ME","MK","MT","NL","NO","PL","PT","RO","RS","SE","SI","SK","TN","TR","UA","UK"],[2.58,1.187,305.492,3.835,490.664,48.719,281.788,46.868,111.52,1000,193.768,44.507,322.561,854.021,229.128,2.054,780.073,2.75,38.692,92.947,153.003,88.193,18.678,832.925,33.529,34.375,30.052,3.224,2.5,4.644,10.234,586.629,181.772,155.588,215.446,84.58,26.621,310.172,75.89,37.134,5.647,65.274,12.135,781.33],[0.821,0.485,60.123,1.056,97.938,11.601,52.895,11.074,23.817,219.321,39.293,10.425,65.863,179.137,46.673,0.531,155.731,0.914,9.121,20.141,31.505,17.286,4.377,171.861,8.011,7.553,7.629,1.086,0.781,1.425,2.59,116.084,37.56,32.834,44.288,19.253,6.21,60.808,16.926,8.803,1.222,13.633,2.981,156.73],[41,44,10,38,7,24,11,25,18,1,14,26,8,2,12,43,5,40,27,19,17,20,33,3,30,29,31,39,42,37,35,6,15,16,13,21,32,9,22,28,36,23,34,4],[41,44,10,39,7,24,11,25,18,1,14,26,8,2,12,43,5,40,27,19,17,21,33,3,29,31,30,38,42,36,35,6,15,16,13,20,32,9,22,28,37,23,34,4]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>country<\/th>\n      <th>eigen<\/th>\n      <th>degree<\/th>\n      <th>eigen_rank<\/th>\n      <th>degree_rank<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"columnDefs":[{"className":"dt-right","targets":[1,2,3,4]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
 </div>
 <div id="raw-graph" class="section level3">
 <h3>Raw Graph</h3>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">ggplot</span>() <span class="op">+</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_segment</span>(</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a>    <span class="dt">data =</span> edges,</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a>    <span class="kw">aes</span>(</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>      <span class="dt">x =</span> from_x,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a>      <span class="dt">xend =</span> to_x,</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a>      <span class="dt">y =</span> from_y,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a>      <span class="dt">yend =</span> to_y,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a>      <span class="dt">size =</span> s,</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a>      <span class="dt">colour =</span> s</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a>    ),</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_gradient</span>(<span class="dt">low =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.05</span>), </span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true"></a>                       <span class="dt">high =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.45</span>)) <span class="op">+</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">size =</span> s, <span class="dt">fill =</span> status),</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true"></a>    <span class="dt">pch =</span> <span class="dv">21</span>,</span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true"></a>    <span class="dt">colour =</span> <span class="st">&quot;white&quot;</span></span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_size</span>(<span class="dt">range =</span> <span class="kw">c</span>(.<span class="dv">25</span>, <span class="dv">5</span>)) <span class="op">+</span></span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">guides</span>(</span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true"></a>    <span class="dt">fill =</span> <span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">size =</span> <span class="dv">7</span>, <span class="dt">shape =</span> <span class="dv">21</span>)),</span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="st">&quot;none&quot;</span>,</span>
-<span id="cb4-27"><a href="#cb4-27" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="st">&quot;none&quot;</span>) <span class="op">+</span></span>
-<span id="cb4-28"><a href="#cb4-28" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
-<span id="cb4-29"><a href="#cb4-29" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
-<span id="cb4-30"><a href="#cb4-30" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">label =</span> country_name),</span>
-<span id="cb4-31"><a href="#cb4-31" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">5.5</span>,</span>
-<span id="cb4-32"><a href="#cb4-32" aria-hidden="true"></a>    <span class="dt">segment.color =</span> <span class="ot">NA</span>,</span>
-<span id="cb4-33"><a href="#cb4-33" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="st">&quot;white&quot;</span>,</span>
-<span id="cb4-34"><a href="#cb4-34" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span></span>
-<span id="cb4-35"><a href="#cb4-35" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb4-36"><a href="#cb4-36" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Force-Directed Graph of H2020 Collaborations&quot;</span>,</span>
-<span id="cb4-37"><a href="#cb4-37" aria-hidden="true"></a>       <span class="dt">subtitle =</span> <span class="st">&quot;EU + Associated Countries, 2014-2020&quot;</span>,</span>
-<span id="cb4-38"><a href="#cb4-38" aria-hidden="true"></a>       <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS&quot;</span>) <span class="op">+</span></span>
-<span id="cb4-39"><a href="#cb4-39" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>() <span class="op">+</span></span>
-<span id="cb4-40"><a href="#cb4-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
-<span id="cb4-41"><a href="#cb4-41" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb4-42"><a href="#cb4-42" aria-hidden="true"></a>    <span class="dt">plot.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">25</span>, <span class="dt">face =</span> <span class="st">&quot;bold&quot;</span>),</span>
-<span id="cb4-43"><a href="#cb4-43" aria-hidden="true"></a>    <span class="dt">plot.subtitle =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">18</span>),</span>
-<span id="cb4-44"><a href="#cb4-44" aria-hidden="true"></a>    <span class="dt">plot.caption =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">10</span>),</span>
-<span id="cb4-45"><a href="#cb4-45" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">95</span>, <span class="fl">.95</span>),</span>
-<span id="cb4-46"><a href="#cb4-46" aria-hidden="true"></a>    <span class="dt">legend.title =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-47"><a href="#cb4-47" aria-hidden="true"></a>    <span class="dt">legend.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">16</span>),</span>
-<span id="cb4-48"><a href="#cb4-48" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">2</span>, <span class="st">&quot;lines&quot;</span>),</span>
-<span id="cb4-49"><a href="#cb4-49" aria-hidden="true"></a>    <span class="dt">axis.title =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-50"><a href="#cb4-50" aria-hidden="true"></a>    <span class="dt">axis.text =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-51"><a href="#cb4-51" aria-hidden="true"></a>    <span class="dt">axis.ticks =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-52"><a href="#cb4-52" aria-hidden="true"></a>    <span class="dt">axis.line =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-53"><a href="#cb4-53" aria-hidden="true"></a>    <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-54"><a href="#cb4-54" aria-hidden="true"></a>    <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-55"><a href="#cb4-55" aria-hidden="true"></a>    <span class="dt">panel.border =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb4-56"><a href="#cb4-56" aria-hidden="true"></a>    <span class="dt">panel.background =</span> <span class="kw">element_blank</span>()</span>
-<span id="cb4-57"><a href="#cb4-57" aria-hidden="true"></a>  )</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="kw">ggplot</span>() <span class="op">+</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_segment</span>(</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a>    <span class="dt">data =</span> edges,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a>    <span class="kw">aes</span>(</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a>      <span class="dt">x =</span> from_x,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a>      <span class="dt">xend =</span> to_x,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a>      <span class="dt">y =</span> from_y,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a>      <span class="dt">yend =</span> to_y,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a>      <span class="dt">size =</span> s,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a>      <span class="dt">colour =</span> s</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a>    ),</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_gradient</span>(<span class="dt">low =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.05</span>), </span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true"></a>                       <span class="dt">high =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.45</span>)) <span class="op">+</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">size =</span> s, <span class="dt">fill =</span> status),</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true"></a>    <span class="dt">pch =</span> <span class="dv">21</span>,</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true"></a>    <span class="dt">colour =</span> <span class="st">&quot;white&quot;</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_size</span>(<span class="dt">range =</span> <span class="kw">c</span>(.<span class="dv">25</span>, <span class="dv">5</span>)) <span class="op">+</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">guides</span>(</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true"></a>    <span class="dt">fill =</span> <span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">size =</span> <span class="dv">7</span>, <span class="dt">shape =</span> <span class="dv">21</span>)),</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="st">&quot;none&quot;</span>) <span class="op">+</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">label =</span> country_name),</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">5.5</span>,</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true"></a>    <span class="dt">segment.color =</span> <span class="ot">NA</span>,</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="st">&quot;white&quot;</span>,</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Force-Directed Graph of H2020 Collaborations&quot;</span>,</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true"></a>       <span class="dt">subtitle =</span> <span class="st">&quot;EU + Associated Countries, 2014-2020&quot;</span>,</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true"></a>       <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS&quot;</span>) <span class="op">+</span></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>() <span class="op">+</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true"></a>    <span class="dt">plot.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">25</span>, <span class="dt">face =</span> <span class="st">&quot;bold&quot;</span>),</span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true"></a>    <span class="dt">plot.subtitle =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">18</span>),</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true"></a>    <span class="dt">plot.caption =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">10</span>),</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">95</span>, <span class="fl">.95</span>),</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true"></a>    <span class="dt">legend.title =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true"></a>    <span class="dt">legend.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">16</span>),</span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">2</span>, <span class="st">&quot;lines&quot;</span>),</span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true"></a>    <span class="dt">axis.title =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true"></a>    <span class="dt">axis.text =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true"></a>    <span class="dt">axis.ticks =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true"></a>    <span class="dt">axis.line =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true"></a>    <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true"></a>    <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true"></a>    <span class="dt">panel.border =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb6-56"><a href="#cb6-56" aria-hidden="true"></a>    <span class="dt">panel.background =</span> <span class="kw">element_blank</span>()</span>
+<span id="cb6-57"><a href="#cb6-57" aria-hidden="true"></a>  )</span></code></pre></div>
 <p><img src="index_files/figure-html/plot-raw-graph-1.png" width="864" /></p>
 <p>Difficult to perceive differences between the core countries.</p>
 </div>
 <div id="log-scaled-weighting" class="section level3">
 <h3>Log-Scaled Weighting</h3>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="co"># recalculating point coordinates using &quot;log(edge weights)&quot;</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(g, <span class="dt">weights =</span> <span class="kw">log</span>(edge_weight))</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_countries, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true"></a></span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true"></a>edges &lt;-<span class="st"> </span><span class="kw">get.data.frame</span>(g) <span class="op">%&gt;%</span></span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> weight) <span class="op">%&gt;%</span></span>
-<span id="cb5-24"><a href="#cb5-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
-<span id="cb5-25"><a href="#cb5-25" aria-hidden="true"></a></span>
-<span id="cb5-26"><a href="#cb5-26" aria-hidden="true"></a><span class="kw">ggplot</span>() <span class="op">+</span></span>
-<span id="cb5-27"><a href="#cb5-27" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_segment</span>(</span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true"></a>    <span class="dt">data =</span> edges,</span>
-<span id="cb5-29"><a href="#cb5-29" aria-hidden="true"></a>    <span class="kw">aes</span>(</span>
-<span id="cb5-30"><a href="#cb5-30" aria-hidden="true"></a>      <span class="dt">x =</span> from_x,</span>
-<span id="cb5-31"><a href="#cb5-31" aria-hidden="true"></a>      <span class="dt">xend =</span> to_x,</span>
-<span id="cb5-32"><a href="#cb5-32" aria-hidden="true"></a>      <span class="dt">y =</span> from_y,</span>
-<span id="cb5-33"><a href="#cb5-33" aria-hidden="true"></a>      <span class="dt">yend =</span> to_y,</span>
-<span id="cb5-34"><a href="#cb5-34" aria-hidden="true"></a>      <span class="dt">size =</span> s,</span>
-<span id="cb5-35"><a href="#cb5-35" aria-hidden="true"></a>      <span class="dt">colour =</span> s</span>
-<span id="cb5-36"><a href="#cb5-36" aria-hidden="true"></a>    ),</span>
-<span id="cb5-37"><a href="#cb5-37" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
-<span id="cb5-38"><a href="#cb5-38" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb5-39"><a href="#cb5-39" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_gradient</span>(<span class="dt">low =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.05</span>), </span>
-<span id="cb5-40"><a href="#cb5-40" aria-hidden="true"></a>                       <span class="dt">high =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.45</span>)) <span class="op">+</span></span>
-<span id="cb5-41"><a href="#cb5-41" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(</span>
-<span id="cb5-42"><a href="#cb5-42" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
-<span id="cb5-43"><a href="#cb5-43" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">size =</span> s, <span class="dt">fill =</span> status),</span>
-<span id="cb5-44"><a href="#cb5-44" aria-hidden="true"></a>    <span class="dt">pch =</span> <span class="dv">21</span>,</span>
-<span id="cb5-45"><a href="#cb5-45" aria-hidden="true"></a>    <span class="dt">colour =</span> <span class="st">&quot;white&quot;</span></span>
-<span id="cb5-46"><a href="#cb5-46" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb5-47"><a href="#cb5-47" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
-<span id="cb5-48"><a href="#cb5-48" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_size</span>(<span class="dt">range =</span> <span class="kw">c</span>(.<span class="dv">25</span>, <span class="dv">15</span>)) <span class="op">+</span></span>
-<span id="cb5-49"><a href="#cb5-49" aria-hidden="true"></a><span class="st">  </span><span class="kw">guides</span>(</span>
-<span id="cb5-50"><a href="#cb5-50" aria-hidden="true"></a>    <span class="dt">fill =</span> <span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">size =</span> <span class="dv">7</span>, <span class="dt">shape =</span> <span class="dv">21</span>)),</span>
-<span id="cb5-51"><a href="#cb5-51" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="st">&quot;none&quot;</span>,</span>
-<span id="cb5-52"><a href="#cb5-52" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="st">&quot;none&quot;</span>) <span class="op">+</span></span>
-<span id="cb5-53"><a href="#cb5-53" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
-<span id="cb5-54"><a href="#cb5-54" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
-<span id="cb5-55"><a href="#cb5-55" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">label =</span> country_name),</span>
-<span id="cb5-56"><a href="#cb5-56" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">5.5</span>,</span>
-<span id="cb5-57"><a href="#cb5-57" aria-hidden="true"></a>    <span class="dt">segment.color =</span> <span class="ot">NA</span>,</span>
-<span id="cb5-58"><a href="#cb5-58" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="st">&quot;white&quot;</span>,</span>
-<span id="cb5-59"><a href="#cb5-59" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span></span>
-<span id="cb5-60"><a href="#cb5-60" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb5-61"><a href="#cb5-61" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Log-Force-Directed Graph of H2020 Collaborations&quot;</span>,</span>
-<span id="cb5-62"><a href="#cb5-62" aria-hidden="true"></a>       <span class="dt">subtitle =</span> <span class="st">&quot;EU + Associated Countries, 2014-2020&quot;</span>,</span>
-<span id="cb5-63"><a href="#cb5-63" aria-hidden="true"></a>       <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS&quot;</span>) <span class="op">+</span></span>
-<span id="cb5-64"><a href="#cb5-64" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>() <span class="op">+</span></span>
-<span id="cb5-65"><a href="#cb5-65" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
-<span id="cb5-66"><a href="#cb5-66" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb5-67"><a href="#cb5-67" aria-hidden="true"></a>    <span class="dt">plot.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">25</span>, <span class="dt">face =</span> <span class="st">&quot;bold&quot;</span>),</span>
-<span id="cb5-68"><a href="#cb5-68" aria-hidden="true"></a>    <span class="dt">plot.subtitle =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">18</span>),</span>
-<span id="cb5-69"><a href="#cb5-69" aria-hidden="true"></a>    <span class="dt">plot.caption =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">10</span>),</span>
-<span id="cb5-70"><a href="#cb5-70" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">95</span>, <span class="fl">.95</span>),</span>
-<span id="cb5-71"><a href="#cb5-71" aria-hidden="true"></a>    <span class="dt">legend.title =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-72"><a href="#cb5-72" aria-hidden="true"></a>    <span class="dt">legend.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">16</span>),</span>
-<span id="cb5-73"><a href="#cb5-73" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">2</span>, <span class="st">&quot;lines&quot;</span>),</span>
-<span id="cb5-74"><a href="#cb5-74" aria-hidden="true"></a>    <span class="dt">axis.title =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-75"><a href="#cb5-75" aria-hidden="true"></a>    <span class="dt">axis.text =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-76"><a href="#cb5-76" aria-hidden="true"></a>    <span class="dt">axis.ticks =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-77"><a href="#cb5-77" aria-hidden="true"></a>    <span class="dt">axis.line =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-78"><a href="#cb5-78" aria-hidden="true"></a>    <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-79"><a href="#cb5-79" aria-hidden="true"></a>    <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-80"><a href="#cb5-80" aria-hidden="true"></a>    <span class="dt">panel.border =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb5-81"><a href="#cb5-81" aria-hidden="true"></a>    <span class="dt">panel.background =</span> <span class="kw">element_blank</span>()</span>
-<span id="cb5-82"><a href="#cb5-82" aria-hidden="true"></a>  )</span></code></pre></div>
-<p><img src="index_files/figure-html/raw-log-scale-1.png" width="864" /></p>
-</div>
-<div id="log-scaled-w-contribution-weighting" class="section level3">
-<h3>Log-Scaled w/ Contribution Weighting</h3>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(role, contribution)) <span class="op">+</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_boxplot</span>() <span class="op">+</span><span class="st"> </span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>)) <span class="op">+</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a><span class="st">  </span><span class="kw">coord_flip</span>() <span class="op">+</span><span class="st"> </span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>()</span></code></pre></div>
-<p>Re-calculating weights using country-specific financial contributions:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>pivot &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(rcn, country) <span class="op">%&gt;%</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">n =</span> <span class="kw">sum</span>(contribution, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>), </span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>            <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> country, </span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a>              <span class="dt">values_from =</span> n, </span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a>              <span class="dt">values_fill =</span> <span class="dv">0</span>)</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>pivot <span class="op">%&gt;%</span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>rcn) <span class="op">%&gt;%</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">as.matrix</span>() <span class="op">%&gt;%</span></span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">crossprod</span>()</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true"></a></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true"></a><span class="co"># adjacency matrix</span></span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(rcn, country) <span class="op">%&gt;%</span></span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true"></a><span class="st">  </span><span class="kw">table</span>() <span class="op">%&gt;%</span></span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">crossprod</span>()</span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a></span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true"></a>g_collab &lt;-<span class="st"> </span>collaborations <span class="op">%&gt;%</span></span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true"></a><span class="st">  </span>igraph<span class="op">::</span><span class="kw">graph_from_adjacency_matrix</span>(<span class="dt">mode =</span> <span class="st">&quot;undirected&quot;</span>,</span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true"></a>                                      <span class="dt">weighted =</span> <span class="ot">TRUE</span>)</span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true"></a><span class="co"># remove same-country collaboration (diagonal 2x)</span></span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true"></a>g &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">simplify</span>(g_collab)</span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true"></a>node_size &lt;-<span class="st">   </span>igraph<span class="op">::</span><span class="kw">strength</span>(g) <span class="co"># ignore same-country collaboration</span></span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true"></a>edge_weight &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">E</span>(g)<span class="op">$</span>weight</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true"></a></span>
-<span id="cb7-28"><a href="#cb7-28" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(g, <span class="dt">weights =</span> <span class="kw">log</span>(edge_weight))</span>
-<span id="cb7-29"><a href="#cb7-29" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
-<span id="cb7-30"><a href="#cb7-30" aria-hidden="true"></a></span>
-<span id="cb7-31"><a href="#cb7-31" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
-<span id="cb7-32"><a href="#cb7-32" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
-<span id="cb7-33"><a href="#cb7-33" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb7-34"><a href="#cb7-34" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
-<span id="cb7-35"><a href="#cb7-35" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_countries, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb7-36"><a href="#cb7-36" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
-<span id="cb7-37"><a href="#cb7-37" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
-<span id="cb7-38"><a href="#cb7-38" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
-<span id="cb7-39"><a href="#cb7-39" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
-<span id="cb7-40"><a href="#cb7-40" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
-<span id="cb7-41"><a href="#cb7-41" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
-<span id="cb7-42"><a href="#cb7-42" aria-hidden="true"></a></span>
-<span id="cb7-43"><a href="#cb7-43" aria-hidden="true"></a>edges &lt;-<span class="st"> </span><span class="kw">get.data.frame</span>(g) <span class="op">%&gt;%</span></span>
-<span id="cb7-44"><a href="#cb7-44" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb7-45"><a href="#cb7-45" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb7-46"><a href="#cb7-46" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb7-47"><a href="#cb7-47" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb7-48"><a href="#cb7-48" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb7-49"><a href="#cb7-49" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> weight) <span class="op">%&gt;%</span></span>
-<span id="cb7-50"><a href="#cb7-50" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a><span class="co"># recalculating point coordinates using &quot;log(edge weights)&quot;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(g, <span class="dt">weights =</span> <span class="kw">log</span>(edge_weight))</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_country, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true"></a>edges &lt;-<span class="st"> </span><span class="kw">get.data.frame</span>(g) <span class="op">%&gt;%</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> weight) <span class="op">%&gt;%</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span></code></pre></div>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="kw">ggplot</span>() <span class="op">+</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_segment</span>(</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>    <span class="dt">data =</span> edges,</span>
@@ -1066,274 +658,330 @@ div.tocify {
 <span id="cb8-55"><a href="#cb8-55" aria-hidden="true"></a>    <span class="dt">panel.border =</span> <span class="kw">element_blank</span>(),</span>
 <span id="cb8-56"><a href="#cb8-56" aria-hidden="true"></a>    <span class="dt">panel.background =</span> <span class="kw">element_blank</span>()</span>
 <span id="cb8-57"><a href="#cb8-57" aria-hidden="true"></a>  )</span></code></pre></div>
+<p><img src="index_files/figure-html/plot-raw-log-scale-1.png" width="864" /></p>
+</div>
+<div id="log-scaled-w-contribution-weighting" class="section level3">
+<h3>Log-Scaled w/ Contribution Weighting</h3>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a>df_collab <span class="op">%&gt;%</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(role, contribution)) <span class="op">+</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_boxplot</span>() <span class="op">+</span><span class="st"> </span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>)) <span class="op">+</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a><span class="st">  </span><span class="kw">coord_flip</span>() <span class="op">+</span><span class="st"> </span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>()</span></code></pre></div>
+<p>Re-calculating weights using country-specific financial contributions:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>pivot &lt;-<span class="st"> </span>df_collab <span class="op">%&gt;%</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(rcn, country) <span class="op">%&gt;%</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">n =</span> <span class="kw">sum</span>(contribution, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>), </span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>            <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> country, </span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>              <span class="dt">values_from =</span> n, </span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a>              <span class="dt">values_fill =</span> <span class="dv">0</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>pivot <span class="op">%&gt;%</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>rcn) <span class="op">%&gt;%</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">as.matrix</span>() <span class="op">%&gt;%</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">crossprod</span>()</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true"></a></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true"></a>g_collab &lt;-<span class="st"> </span>collaborations <span class="op">%&gt;%</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true"></a><span class="st">  </span>igraph<span class="op">::</span><span class="kw">graph_from_adjacency_matrix</span>(<span class="dt">mode =</span> <span class="st">&quot;undirected&quot;</span>,</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true"></a>                                      <span class="dt">weighted =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true"></a><span class="co"># remove same-country collaboration (diagonal 2x)</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true"></a>g &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">simplify</span>(g_collab)</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true"></a>node_size &lt;-<span class="st">   </span>igraph<span class="op">::</span><span class="kw">strength</span>(g) <span class="co"># ignore same-country collaboration</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true"></a>edge_weight &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">E</span>(g)<span class="op">$</span>weight</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true"></a></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(g, <span class="dt">weights =</span> <span class="kw">log</span>(edge_weight))</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true"></a></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_country, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true"></a></span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true"></a>edges &lt;-<span class="st"> </span><span class="kw">get.data.frame</span>(g) <span class="op">%&gt;%</span></span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb10-43"><a href="#cb10-43" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> weight) <span class="op">%&gt;%</span></span>
+<span id="cb10-44"><a href="#cb10-44" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="kw">ggplot</span>() <span class="op">+</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_segment</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a>    <span class="dt">data =</span> edges,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>    <span class="kw">aes</span>(</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>      <span class="dt">x =</span> from_x,</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>      <span class="dt">xend =</span> to_x,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>      <span class="dt">y =</span> from_y,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a>      <span class="dt">yend =</span> to_y,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a>      <span class="dt">size =</span> s,</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a>      <span class="dt">colour =</span> s</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a>    ),</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_gradient</span>(<span class="dt">low =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.05</span>), </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true"></a>                       <span class="dt">high =</span> <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="fl">.45</span>)) <span class="op">+</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">size =</span> s, <span class="dt">fill =</span> status),</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true"></a>    <span class="dt">pch =</span> <span class="dv">21</span>,</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true"></a>    <span class="dt">colour =</span> <span class="st">&quot;white&quot;</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_size</span>(<span class="dt">range =</span> <span class="kw">c</span>(.<span class="dv">25</span>, <span class="dv">15</span>)) <span class="op">+</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">guides</span>(</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true"></a>    <span class="dt">fill =</span> <span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">size =</span> <span class="dv">7</span>, <span class="dt">shape =</span> <span class="dv">21</span>)),</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="st">&quot;none&quot;</span>) <span class="op">+</span></span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">label =</span> country_name),</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">5.5</span>,</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true"></a>    <span class="dt">segment.color =</span> <span class="ot">NA</span>,</span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="st">&quot;white&quot;</span>,</span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span></span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Log-Force-Directed Graph of H2020 Collaborations&quot;</span>,</span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true"></a>       <span class="dt">subtitle =</span> <span class="st">&quot;EU + Associated Countries, 2014-2020&quot;</span>,</span>
+<span id="cb11-38"><a href="#cb11-38" aria-hidden="true"></a>       <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS&quot;</span>) <span class="op">+</span></span>
+<span id="cb11-39"><a href="#cb11-39" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>() <span class="op">+</span></span>
+<span id="cb11-40"><a href="#cb11-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
+<span id="cb11-41"><a href="#cb11-41" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb11-42"><a href="#cb11-42" aria-hidden="true"></a>    <span class="dt">plot.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">25</span>, <span class="dt">face =</span> <span class="st">&quot;bold&quot;</span>),</span>
+<span id="cb11-43"><a href="#cb11-43" aria-hidden="true"></a>    <span class="dt">plot.subtitle =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">18</span>),</span>
+<span id="cb11-44"><a href="#cb11-44" aria-hidden="true"></a>    <span class="dt">plot.caption =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">10</span>),</span>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">95</span>, <span class="fl">.95</span>),</span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true"></a>    <span class="dt">legend.title =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true"></a>    <span class="dt">legend.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">16</span>),</span>
+<span id="cb11-48"><a href="#cb11-48" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">2</span>, <span class="st">&quot;lines&quot;</span>),</span>
+<span id="cb11-49"><a href="#cb11-49" aria-hidden="true"></a>    <span class="dt">axis.title =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-50"><a href="#cb11-50" aria-hidden="true"></a>    <span class="dt">axis.text =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-51"><a href="#cb11-51" aria-hidden="true"></a>    <span class="dt">axis.ticks =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-52"><a href="#cb11-52" aria-hidden="true"></a>    <span class="dt">axis.line =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-53"><a href="#cb11-53" aria-hidden="true"></a>    <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-54"><a href="#cb11-54" aria-hidden="true"></a>    <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-55"><a href="#cb11-55" aria-hidden="true"></a>    <span class="dt">panel.border =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb11-56"><a href="#cb11-56" aria-hidden="true"></a>    <span class="dt">panel.background =</span> <span class="kw">element_blank</span>()</span>
+<span id="cb11-57"><a href="#cb11-57" aria-hidden="true"></a>  )</span></code></pre></div>
 <p><img src="index_files/figure-html/plot-contrib-graph-1.png" width="864" /></p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="co"># re-calculate layout on log-scale of edge weight</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="co"># spread core:</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>g <span class="op">%&gt;%</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a><span class="st">  </span><span class="co">#  edge weight</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a><span class="st">  </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(<span class="dt">weights =</span> <span class="kw">log</span>(edge_weight))</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_countries, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true"></a></span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true"></a>edges &lt;-<span class="st"> </span>g <span class="op">%&gt;%</span></span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">get.data.frame</span>() <span class="op">%&gt;%</span></span>
-<span id="cb9-22"><a href="#cb9-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb9-24"><a href="#cb9-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb9-25"><a href="#cb9-25" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb9-26"><a href="#cb9-26" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
-<span id="cb9-27"><a href="#cb9-27" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> (weight <span class="op">/</span><span class="st"> </span><span class="dv">1000</span>) <span class="op">^</span><span class="st"> </span><span class="fl">2.5</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="co"># ad-hoc</span></span>
-<span id="cb9-28"><a href="#cb9-28" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
-<span id="cb9-29"><a href="#cb9-29" aria-hidden="true"></a></span>
-<span id="cb9-30"><a href="#cb9-30" aria-hidden="true"></a><span class="co"># separate rules to approach Nature&#39;s representation</span></span>
-<span id="cb9-31"><a href="#cb9-31" aria-hidden="true"></a>threshold &lt;-<span class="st"> </span><span class="dv">1</span> <span class="co"># ad-hoc</span></span>
-<span id="cb9-32"><a href="#cb9-32" aria-hidden="true"></a>core_edges &lt;-<span class="st"> </span>edges <span class="op">%&gt;%</span></span>
-<span id="cb9-33"><a href="#cb9-33" aria-hidden="true"></a><span class="st">  </span><span class="kw">filter</span>(s <span class="op">&gt;</span><span class="st"> </span>threshold)</span>
-<span id="cb9-34"><a href="#cb9-34" aria-hidden="true"></a>outer_edges &lt;-<span class="st"> </span>edges <span class="op">%&gt;%</span></span>
-<span id="cb9-35"><a href="#cb9-35" aria-hidden="true"></a><span class="st">  </span><span class="kw">filter</span>(s <span class="op">&lt;=</span><span class="st"> </span>threshold)</span>
-<span id="cb9-36"><a href="#cb9-36" aria-hidden="true"></a>outer_edges_reversed &lt;-<span class="st"> </span>outer_edges <span class="op">%&gt;%</span></span>
-<span id="cb9-37"><a href="#cb9-37" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from =</span> to, <span class="dt">to =</span> from) <span class="op">%&gt;%</span></span>
-<span id="cb9-38"><a href="#cb9-38" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(from, <span class="kw">everything</span>())</span>
-<span id="cb9-39"><a href="#cb9-39" aria-hidden="true"></a>outer_edges &lt;-<span class="st"> </span>outer_edges <span class="op">%&gt;%</span></span>
-<span id="cb9-40"><a href="#cb9-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">bind_rows</span>(outer_edges_reversed) <span class="op">%&gt;%</span></span>
-<span id="cb9-41"><a href="#cb9-41" aria-hidden="true"></a><span class="st">  </span><span class="kw">anti_join</span>(core_edges, <span class="dt">by =</span> <span class="st">&quot;from&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb9-42"><a href="#cb9-42" aria-hidden="true"></a><span class="st">  </span><span class="kw">anti_join</span>(core_edges, <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;to&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb9-43"><a href="#cb9-43" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(from) <span class="op">%&gt;%</span></span>
-<span id="cb9-44"><a href="#cb9-44" aria-hidden="true"></a><span class="st">  </span><span class="kw">top_n</span>(<span class="dv">1</span>, s) <span class="op">%&gt;%</span></span>
-<span id="cb9-45"><a href="#cb9-45" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> <span class="dv">1</span>)</span>
-<span id="cb9-46"><a href="#cb9-46" aria-hidden="true"></a></span>
-<span id="cb9-47"><a href="#cb9-47" aria-hidden="true"></a>edges &lt;-<span class="st"> </span>core_edges <span class="op">%&gt;%</span></span>
-<span id="cb9-48"><a href="#cb9-48" aria-hidden="true"></a><span class="st">  </span><span class="kw">bind_rows</span>(outer_edges) <span class="op">%&gt;%</span></span>
-<span id="cb9-49"><a href="#cb9-49" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s) <span class="co"># plot stronger edges last</span></span>
-<span id="cb9-50"><a href="#cb9-50" aria-hidden="true"></a></span>
-<span id="cb9-51"><a href="#cb9-51" aria-hidden="true"></a><span class="kw">ggplot</span>() <span class="op">+</span></span>
-<span id="cb9-52"><a href="#cb9-52" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_segment</span>(</span>
-<span id="cb9-53"><a href="#cb9-53" aria-hidden="true"></a>    <span class="dt">data =</span> edges,</span>
-<span id="cb9-54"><a href="#cb9-54" aria-hidden="true"></a>    <span class="kw">aes</span>(</span>
-<span id="cb9-55"><a href="#cb9-55" aria-hidden="true"></a>      <span class="dt">x =</span> from_x,</span>
-<span id="cb9-56"><a href="#cb9-56" aria-hidden="true"></a>      <span class="dt">xend =</span> to_x,</span>
-<span id="cb9-57"><a href="#cb9-57" aria-hidden="true"></a>      <span class="dt">y =</span> from_y,</span>
-<span id="cb9-58"><a href="#cb9-58" aria-hidden="true"></a>      <span class="dt">yend =</span> to_y,</span>
-<span id="cb9-59"><a href="#cb9-59" aria-hidden="true"></a>      <span class="dt">size =</span> s,</span>
-<span id="cb9-60"><a href="#cb9-60" aria-hidden="true"></a>      <span class="dt">colour =</span> s</span>
-<span id="cb9-61"><a href="#cb9-61" aria-hidden="true"></a>    ),</span>
-<span id="cb9-62"><a href="#cb9-62" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
-<span id="cb9-63"><a href="#cb9-63" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb9-64"><a href="#cb9-64" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_gradient</span>(<span class="dt">low =</span> <span class="st">&quot;gray90&quot;</span>, <span class="dt">high =</span> <span class="st">&quot;gray45&quot;</span>) <span class="op">+</span></span>
-<span id="cb9-65"><a href="#cb9-65" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(</span>
-<span id="cb9-66"><a href="#cb9-66" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
-<span id="cb9-67"><a href="#cb9-67" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">size =</span> s, <span class="dt">fill =</span> status),</span>
-<span id="cb9-68"><a href="#cb9-68" aria-hidden="true"></a>    <span class="dt">pch =</span> <span class="dv">21</span>,</span>
-<span id="cb9-69"><a href="#cb9-69" aria-hidden="true"></a>    <span class="dt">colour =</span> <span class="st">&quot;white&quot;</span></span>
-<span id="cb9-70"><a href="#cb9-70" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb9-71"><a href="#cb9-71" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_fill_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
-<span id="cb9-72"><a href="#cb9-72" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_size</span>(<span class="dt">range =</span> <span class="kw">c</span>(.<span class="dv">75</span>, <span class="dv">16</span>)) <span class="op">+</span></span>
-<span id="cb9-73"><a href="#cb9-73" aria-hidden="true"></a><span class="st">  </span><span class="kw">guides</span>(</span>
-<span id="cb9-74"><a href="#cb9-74" aria-hidden="true"></a>    <span class="dt">fill =</span> <span class="kw">guide_legend</span>(<span class="dt">override.aes =</span> <span class="kw">list</span>(<span class="dt">size =</span> <span class="dv">7</span>, <span class="dt">shape =</span> <span class="dv">21</span>)),</span>
-<span id="cb9-75"><a href="#cb9-75" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="st">&quot;none&quot;</span>,</span>
-<span id="cb9-76"><a href="#cb9-76" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="st">&quot;none&quot;</span>) <span class="op">+</span></span>
-<span id="cb9-77"><a href="#cb9-77" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
-<span id="cb9-78"><a href="#cb9-78" aria-hidden="true"></a>    <span class="dt">data =</span> nodes,</span>
-<span id="cb9-79"><a href="#cb9-79" aria-hidden="true"></a>    <span class="kw">aes</span>(x, y, <span class="dt">label =</span> country_name),</span>
-<span id="cb9-80"><a href="#cb9-80" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">5.5</span>,</span>
-<span id="cb9-81"><a href="#cb9-81" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">3</span>,</span>
-<span id="cb9-82"><a href="#cb9-82" aria-hidden="true"></a>    <span class="dt">segment.color =</span> <span class="ot">NA</span>,</span>
-<span id="cb9-83"><a href="#cb9-83" aria-hidden="true"></a>    <span class="dt">box.padding =</span> <span class="kw">unit</span>(.<span class="dv">8</span>, <span class="st">&quot;lines&quot;</span>),</span>
-<span id="cb9-84"><a href="#cb9-84" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="st">&quot;white&quot;</span>,</span>
-<span id="cb9-85"><a href="#cb9-85" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span></span>
-<span id="cb9-86"><a href="#cb9-86" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb9-87"><a href="#cb9-87" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Log-Force-Directed Graph of H2020 Collaborations&quot;</span>,</span>
-<span id="cb9-88"><a href="#cb9-88" aria-hidden="true"></a>       <span class="dt">subtitle =</span> <span class="st">&quot;EU + Associated Countries, 2014-2020&quot;</span>,</span>
-<span id="cb9-89"><a href="#cb9-89" aria-hidden="true"></a>       <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS&quot;</span>) <span class="op">+</span></span>
-<span id="cb9-90"><a href="#cb9-90" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_bw</span>() <span class="op">+</span></span>
-<span id="cb9-91"><a href="#cb9-91" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
-<span id="cb9-92"><a href="#cb9-92" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb9-93"><a href="#cb9-93" aria-hidden="true"></a>    <span class="dt">plot.title =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">25</span>, <span class="dt">face =</span> <span class="st">&quot;bold&quot;</span>),</span>
-<span id="cb9-94"><a href="#cb9-94" aria-hidden="true"></a>    <span class="dt">plot.subtitle =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">18</span>),</span>
-<span id="cb9-95"><a href="#cb9-95" aria-hidden="true"></a>    <span class="dt">plot.caption =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">10</span>),</span>
-<span id="cb9-96"><a href="#cb9-96" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">95</span>, <span class="fl">.95</span>),</span>
-<span id="cb9-97"><a href="#cb9-97" aria-hidden="true"></a>    <span class="dt">legend.title =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-98"><a href="#cb9-98" aria-hidden="true"></a>    <span class="dt">legend.text =</span> <span class="kw">element_text</span>(<span class="dt">size =</span> <span class="dv">16</span>),</span>
-<span id="cb9-99"><a href="#cb9-99" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">2</span>, <span class="st">&quot;lines&quot;</span>),</span>
-<span id="cb9-100"><a href="#cb9-100" aria-hidden="true"></a>    <span class="dt">axis.title =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-101"><a href="#cb9-101" aria-hidden="true"></a>    <span class="dt">axis.text =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-102"><a href="#cb9-102" aria-hidden="true"></a>    <span class="dt">axis.ticks =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-103"><a href="#cb9-103" aria-hidden="true"></a>    <span class="dt">axis.line =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-104"><a href="#cb9-104" aria-hidden="true"></a>    <span class="dt">panel.grid.major =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-105"><a href="#cb9-105" aria-hidden="true"></a>    <span class="dt">panel.grid.minor =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-106"><a href="#cb9-106" aria-hidden="true"></a>    <span class="dt">panel.border =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb9-107"><a href="#cb9-107" aria-hidden="true"></a>    <span class="dt">panel.background =</span> <span class="kw">element_blank</span>()</span>
-<span id="cb9-108"><a href="#cb9-108" aria-hidden="true"></a>  )</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="co"># re-calculate layout on log-scale of edge weight</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a><span class="co"># spread core:</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>point_coordinates &lt;-<span class="st"> </span>g <span class="op">%&gt;%</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a><span class="st">  </span><span class="co">#  edge weight</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a><span class="st">  </span>igraph<span class="op">::</span><span class="kw">layout_with_fr</span>(<span class="dt">weights =</span> <span class="kw">log</span>(edge_weight))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a><span class="kw">colnames</span>(point_coordinates) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>nodes &lt;-<span class="st"> </span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a><span class="st">  </span>point_coordinates <span class="op">%&gt;%</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">country =</span> <span class="kw">names</span>(igraph<span class="op">::</span><span class="kw">V</span>(g))) <span class="op">%&gt;%</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(info_country, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>),</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true"></a>    <span class="dt">s =</span> node_size</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true"></a>  ) <span class="op">%&gt;%</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true"></a></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true"></a>edges &lt;-<span class="st"> </span>g <span class="op">%&gt;%</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">get.data.frame</span>() <span class="op">%&gt;%</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">as_tibble</span>() <span class="op">%&gt;%</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from_x =</span> x, <span class="dt">from_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(<span class="kw">select</span>(nodes, x<span class="op">:</span>country), <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;to&quot;</span> =<span class="st"> &quot;country&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">to_x =</span> x, <span class="dt">to_y =</span> y) <span class="op">%&gt;%</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> (weight <span class="op">/</span><span class="st"> </span><span class="dv">1000</span>) <span class="op">^</span><span class="st"> </span><span class="fl">2.5</span>) <span class="op">%&gt;%</span><span class="st"> </span><span class="co"># ad-hoc</span></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s)</span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true"></a></span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true"></a><span class="co"># separate rules to approach Nature&#39;s representation</span></span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true"></a>threshold &lt;-<span class="st"> </span><span class="dv">1</span> <span class="co"># ad-hoc</span></span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true"></a>core_edges &lt;-<span class="st"> </span>edges <span class="op">%&gt;%</span></span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true"></a><span class="st">  </span><span class="kw">filter</span>(s <span class="op">&gt;</span><span class="st"> </span>threshold)</span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true"></a>outer_edges &lt;-<span class="st"> </span>edges <span class="op">%&gt;%</span></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true"></a><span class="st">  </span><span class="kw">filter</span>(s <span class="op">&lt;=</span><span class="st"> </span>threshold)</span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true"></a>outer_edges_reversed &lt;-<span class="st"> </span>outer_edges <span class="op">%&gt;%</span></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true"></a><span class="st">  </span><span class="kw">rename</span>(<span class="dt">from =</span> to, <span class="dt">to =</span> from) <span class="op">%&gt;%</span></span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(from, <span class="kw">everything</span>())</span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true"></a>outer_edges &lt;-<span class="st"> </span>outer_edges <span class="op">%&gt;%</span></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true"></a><span class="st">  </span><span class="kw">bind_rows</span>(outer_edges_reversed) <span class="op">%&gt;%</span></span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true"></a><span class="st">  </span><span class="kw">anti_join</span>(core_edges, <span class="dt">by =</span> <span class="st">&quot;from&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true"></a><span class="st">  </span><span class="kw">anti_join</span>(core_edges, <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;from&quot;</span> =<span class="st"> &quot;to&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(from) <span class="op">%&gt;%</span></span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true"></a><span class="st">  </span><span class="kw">top_n</span>(<span class="dv">1</span>, s) <span class="op">%&gt;%</span></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">s =</span> <span class="dv">1</span>)</span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true"></a></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true"></a>edges &lt;-<span class="st"> </span>core_edges <span class="op">%&gt;%</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true"></a><span class="st">  </span><span class="kw">bind_rows</span>(outer_edges) <span class="op">%&gt;%</span></span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true"></a><span class="st">  </span><span class="kw">arrange</span>(s) <span class="co"># plot stronger edges last</span></span></code></pre></div>
 <hr />
 </div>
 </div>
 <div id="pop.-collab.-contrib." class="section level2">
 <h2>Pop., Collab., Contrib.</h2>
 <p>Below, a log-log scale updated representation of Figure 2 from <em><a href="https://www.tandfonline.com/doi/figure/10.1080/09654313.2019.1641187">Network dynamics in collaborative research in the EU, 2003–2017</a></em>.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>population_table &lt;-<span class="st"> </span>wbstats<span class="op">::</span><span class="kw">wb_data</span>(</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>  <span class="dt">indicator =</span> <span class="st">&quot;SP.POP.TOTL&quot;</span>,</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>  <span class="dt">country =</span> <span class="kw">countrycode</span>(<span class="kw">pull</span>(info_countries, country), <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;iso2c&quot;</span>),</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>  <span class="dt">start_date =</span> <span class="dv">2017</span>,</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a>  <span class="dt">end_date =</span> <span class="dv">2017</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>) <span class="op">%&gt;%</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="st">  </span><span class="kw">clean_names</span>() <span class="op">%&gt;%</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(iso2c, <span class="dt">population =</span> sp_pop_totl)</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true"></a>funding &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(country) <span class="op">%&gt;%</span></span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">contrib =</span> <span class="kw">sum</span>(contribution, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>),</span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true"></a>            <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>)</span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true"></a></span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>h2020 <span class="op">%&gt;%</span></span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true"></a><span class="st">  </span><span class="co"># keep group information</span></span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(group, country) <span class="op">%&gt;%</span></span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">n =</span> <span class="kw">n</span>(),</span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true"></a>            <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true"></a><span class="st">  </span><span class="co"># for world bank compatibility</span></span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
-<span id="cb10-23"><a href="#cb10-23" aria-hidden="true"></a>    <span class="dt">iso2c =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;iso2c&quot;</span>),</span>
-<span id="cb10-24"><a href="#cb10-24" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>)) <span class="op">%&gt;%</span></span>
-<span id="cb10-25"><a href="#cb10-25" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(population_table, <span class="dt">by =</span> <span class="st">&quot;iso2c&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb10-26"><a href="#cb10-26" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(funding, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="kw">ggplot</span>(<span class="kw">aes</span>(population, n, <span class="dt">label =</span> country_name, <span class="dt">col =</span> status),</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a>       <span class="dt">data =</span> collaborations) <span class="op">+</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_smooth</span>(</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>    <span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>,</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>    <span class="dt">se =</span> <span class="ot">FALSE</span>,</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>    <span class="dt">col =</span> <span class="st">&quot;gray75&quot;</span>,</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>    <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">.5</span></span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.8</span>) <span class="op">+</span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="dv">5</span>,</span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">2</span>,</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a>    <span class="dt">segment.alpha =</span> <span class="fl">0.5</span>,</span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">.5</span>),</span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span>,</span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
-<span id="cb11-18"><a href="#cb11-18" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb11-19"><a href="#cb11-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
-<span id="cb11-20"><a href="#cb11-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_x_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
-<span id="cb11-21"><a href="#cb11-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-3</span>)) <span class="op">+</span></span>
-<span id="cb11-22"><a href="#cb11-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(</span>
-<span id="cb11-23"><a href="#cb11-23" aria-hidden="true"></a>    <span class="dt">title =</span> <span class="st">&quot;H2020 Collaborations and Population&quot;</span>,</span>
-<span id="cb11-24"><a href="#cb11-24" aria-hidden="true"></a>    <span class="dt">subtitle =</span> <span class="st">&quot;Shown in log-log scale&quot;</span>,</span>
-<span id="cb11-25"><a href="#cb11-25" aria-hidden="true"></a>    <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS, World Bank&quot;</span>,</span>
-<span id="cb11-26"><a href="#cb11-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb11-27"><a href="#cb11-27" aria-hidden="true"></a>    <span class="dt">x =</span> <span class="st">&quot;Population (mio)&quot;</span>,</span>
-<span id="cb11-28"><a href="#cb11-28" aria-hidden="true"></a>    <span class="dt">y =</span> <span class="st">&quot;No. Collaborations (k)&quot;</span></span>
-<span id="cb11-29"><a href="#cb11-29" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb11-30"><a href="#cb11-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
-<span id="cb11-31"><a href="#cb11-31" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
-<span id="cb11-32"><a href="#cb11-32" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb11-33"><a href="#cb11-33" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">1</span>, <span class="fl">.96</span>),</span>
-<span id="cb11-34"><a href="#cb11-34" aria-hidden="true"></a>    <span class="dt">legend.direction =</span> <span class="st">&quot;horizontal&quot;</span>,</span>
-<span id="cb11-35"><a href="#cb11-35" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">4</span>, <span class="st">&quot;mm&quot;</span>),</span>
-<span id="cb11-36"><a href="#cb11-36" aria-hidden="true"></a>    <span class="dt">legend.background =</span> <span class="kw">element_rect</span>(</span>
-<span id="cb11-37"><a href="#cb11-37" aria-hidden="true"></a>      <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
-<span id="cb11-38"><a href="#cb11-38" aria-hidden="true"></a>      <span class="dt">fill =</span> <span class="kw">alpha</span>(<span class="st">&quot;white&quot;</span>, <span class="dv">1</span>),</span>
-<span id="cb11-39"><a href="#cb11-39" aria-hidden="true"></a>      <span class="dt">color =</span> <span class="kw">alpha</span>(<span class="st">&quot;black&quot;</span>, <span class="fl">0.25</span>)</span>
-<span id="cb11-40"><a href="#cb11-40" aria-hidden="true"></a>    )</span>
-<span id="cb11-41"><a href="#cb11-41" aria-hidden="true"></a>  )</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="864" /></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>population_table &lt;-<span class="st"> </span>wbstats<span class="op">::</span><span class="kw">wb_data</span>(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>  <span class="dt">indicator =</span> <span class="st">&quot;SP.POP.TOTL&quot;</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a>  <span class="dt">country =</span> <span class="kw">countrycode</span>(<span class="kw">pull</span>(info_country, country), <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;iso2c&quot;</span>),</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>  <span class="dt">start_date =</span> <span class="dv">2017</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>  <span class="dt">end_date =</span> <span class="dv">2017</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>) <span class="op">%&gt;%</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a><span class="st">  </span><span class="kw">clean_names</span>() <span class="op">%&gt;%</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a><span class="st">  </span><span class="kw">select</span>(iso2c, <span class="dt">population =</span> sp_pop_totl)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>funding &lt;-<span class="st"> </span>df_collab <span class="op">%&gt;%</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(country) <span class="op">%&gt;%</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">contrib =</span> <span class="kw">sum</span>(contribution, <span class="dt">na.rm =</span> <span class="ot">TRUE</span>),</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a>            <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a>collaborations &lt;-<span class="st"> </span>df_collab <span class="op">%&gt;%</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a><span class="st">  </span><span class="co"># keep group information</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a><span class="st">  </span><span class="kw">group_by</span>(group, country) <span class="op">%&gt;%</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true"></a><span class="st">  </span><span class="kw">summarise</span>(<span class="dt">n =</span> <span class="kw">n</span>(),</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true"></a>            <span class="dt">.groups =</span> <span class="st">&quot;drop&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true"></a><span class="st">  </span><span class="co"># for world bank compatibility</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true"></a>    <span class="dt">status =</span> <span class="kw">str_to_upper</span>(group),</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true"></a>    <span class="dt">iso2c =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;iso2c&quot;</span>),</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true"></a>    <span class="dt">country_name =</span> <span class="kw">countrycode</span>(country, <span class="st">&quot;eurostat&quot;</span>, <span class="st">&quot;country.name&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(population_table, <span class="dt">by =</span> <span class="st">&quot;iso2c&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true"></a><span class="st">  </span><span class="kw">left_join</span>(funding, <span class="dt">by =</span> <span class="st">&quot;country&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="kw">ggplot</span>(<span class="kw">aes</span>(population, n, <span class="dt">label =</span> country_name, <span class="dt">col =</span> status),</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a>       <span class="dt">data =</span> collaborations) <span class="op">+</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_smooth</span>(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>    <span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a>    <span class="dt">se =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a>    <span class="dt">col =</span> <span class="st">&quot;gray75&quot;</span>,</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>    <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">.5</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.8</span>) <span class="op">+</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="dv">5</span>,</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">2</span>,</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true"></a>    <span class="dt">segment.alpha =</span> <span class="fl">0.5</span>,</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">.5</span>),</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span>,</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_x_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-3</span>)) <span class="op">+</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true"></a>    <span class="dt">title =</span> <span class="st">&quot;H2020 Collaborations and Population&quot;</span>,</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true"></a>    <span class="dt">subtitle =</span> <span class="st">&quot;Shown in log-log scale&quot;</span>,</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true"></a>    <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS, World Bank&quot;</span>,</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true"></a>    <span class="dt">x =</span> <span class="st">&quot;Population (mio)&quot;</span>,</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true"></a>    <span class="dt">y =</span> <span class="st">&quot;No. Collaborations (k)&quot;</span></span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">1</span>, <span class="fl">.96</span>),</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true"></a>    <span class="dt">legend.direction =</span> <span class="st">&quot;horizontal&quot;</span>,</span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">4</span>, <span class="st">&quot;mm&quot;</span>),</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true"></a>    <span class="dt">legend.background =</span> <span class="kw">element_rect</span>(</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true"></a>      <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true"></a>      <span class="dt">fill =</span> <span class="kw">alpha</span>(<span class="st">&quot;white&quot;</span>, <span class="dv">1</span>),</span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true"></a>      <span class="dt">color =</span> <span class="kw">alpha</span>(<span class="st">&quot;black&quot;</span>, <span class="fl">0.25</span>)</span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true"></a>    )</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true"></a>  )</span></code></pre></div>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" width="864" /></p>
 <p>Related plots:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="kw">ggplot</span>(<span class="kw">aes</span>(population, contrib, <span class="dt">label =</span> country_name, <span class="dt">col =</span> status),</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>       <span class="dt">data =</span> collaborations) <span class="op">+</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_smooth</span>(</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>    <span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>,</span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>    <span class="dt">se =</span> <span class="ot">FALSE</span>,</span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a>    <span class="dt">col =</span> <span class="st">&quot;gray75&quot;</span>,</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>    <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">.5</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.8</span>) <span class="op">+</span></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="dv">5</span>,</span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">2</span>,</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a>    <span class="dt">segment.alpha =</span> <span class="fl">0.5</span>,</span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">.5</span>),</span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span>,</span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_x_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
-<span id="cb12-21"><a href="#cb12-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(</span>
-<span id="cb12-23"><a href="#cb12-23" aria-hidden="true"></a>    <span class="dt">title =</span> <span class="st">&quot;H2020 Contributions and Population&quot;</span>,</span>
-<span id="cb12-24"><a href="#cb12-24" aria-hidden="true"></a>    <span class="dt">subtitle =</span> <span class="st">&quot;Shown in log-log scale&quot;</span>,</span>
-<span id="cb12-25"><a href="#cb12-25" aria-hidden="true"></a>    <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS, World Bank&quot;</span>,</span>
-<span id="cb12-26"><a href="#cb12-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb12-27"><a href="#cb12-27" aria-hidden="true"></a>    <span class="dt">x =</span> <span class="st">&quot;Population (mio)&quot;</span>,</span>
-<span id="cb12-28"><a href="#cb12-28" aria-hidden="true"></a>    <span class="dt">y =</span> <span class="st">&quot;Total Contribution (mioEUR)&quot;</span></span>
-<span id="cb12-29"><a href="#cb12-29" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb12-30"><a href="#cb12-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
-<span id="cb12-31"><a href="#cb12-31" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
-<span id="cb12-32"><a href="#cb12-32" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb12-33"><a href="#cb12-33" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">1</span>, <span class="fl">.96</span>),</span>
-<span id="cb12-34"><a href="#cb12-34" aria-hidden="true"></a>    <span class="dt">legend.direction =</span> <span class="st">&quot;horizontal&quot;</span>,</span>
-<span id="cb12-35"><a href="#cb12-35" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">4</span>, <span class="st">&quot;mm&quot;</span>),</span>
-<span id="cb12-36"><a href="#cb12-36" aria-hidden="true"></a>    <span class="dt">legend.background =</span> <span class="kw">element_rect</span>(</span>
-<span id="cb12-37"><a href="#cb12-37" aria-hidden="true"></a>      <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
-<span id="cb12-38"><a href="#cb12-38" aria-hidden="true"></a>      <span class="dt">fill =</span> <span class="kw">alpha</span>(<span class="st">&quot;white&quot;</span>, <span class="dv">1</span>),</span>
-<span id="cb12-39"><a href="#cb12-39" aria-hidden="true"></a>      <span class="dt">color =</span> <span class="kw">alpha</span>(<span class="st">&quot;black&quot;</span>, <span class="fl">0.25</span>)</span>
-<span id="cb12-40"><a href="#cb12-40" aria-hidden="true"></a>    )</span>
-<span id="cb12-41"><a href="#cb12-41" aria-hidden="true"></a>  )</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="kw">ggplot</span>(<span class="kw">aes</span>(population, contrib, <span class="dt">label =</span> country_name, <span class="dt">col =</span> status),</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a>       <span class="dt">data =</span> collaborations) <span class="op">+</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_smooth</span>(</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true"></a>    <span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true"></a>    <span class="dt">se =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true"></a>    <span class="dt">col =</span> <span class="st">&quot;gray75&quot;</span>,</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true"></a>    <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">.5</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.8</span>) <span class="op">+</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="dv">5</span>,</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">2</span>,</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true"></a>    <span class="dt">segment.alpha =</span> <span class="fl">0.5</span>,</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">.5</span>),</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span>,</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_x_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true"></a>    <span class="dt">title =</span> <span class="st">&quot;H2020 Contributions and Population&quot;</span>,</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true"></a>    <span class="dt">subtitle =</span> <span class="st">&quot;Shown in log-log scale&quot;</span>,</span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true"></a>    <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS, World Bank&quot;</span>,</span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true"></a>    <span class="dt">x =</span> <span class="st">&quot;Population (mio)&quot;</span>,</span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true"></a>    <span class="dt">y =</span> <span class="st">&quot;Total Contribution (mioEUR)&quot;</span></span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">1</span>, <span class="fl">.96</span>),</span>
+<span id="cb16-34"><a href="#cb16-34" aria-hidden="true"></a>    <span class="dt">legend.direction =</span> <span class="st">&quot;horizontal&quot;</span>,</span>
+<span id="cb16-35"><a href="#cb16-35" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">4</span>, <span class="st">&quot;mm&quot;</span>),</span>
+<span id="cb16-36"><a href="#cb16-36" aria-hidden="true"></a>    <span class="dt">legend.background =</span> <span class="kw">element_rect</span>(</span>
+<span id="cb16-37"><a href="#cb16-37" aria-hidden="true"></a>      <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
+<span id="cb16-38"><a href="#cb16-38" aria-hidden="true"></a>      <span class="dt">fill =</span> <span class="kw">alpha</span>(<span class="st">&quot;white&quot;</span>, <span class="dv">1</span>),</span>
+<span id="cb16-39"><a href="#cb16-39" aria-hidden="true"></a>      <span class="dt">color =</span> <span class="kw">alpha</span>(<span class="st">&quot;black&quot;</span>, <span class="fl">0.25</span>)</span>
+<span id="cb16-40"><a href="#cb16-40" aria-hidden="true"></a>    )</span>
+<span id="cb16-41"><a href="#cb16-41" aria-hidden="true"></a>  )</span></code></pre></div>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="864" /></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="kw">ggplot</span>(<span class="kw">aes</span>(n, contrib, <span class="dt">label =</span> country_name, <span class="dt">col =</span> status),</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>       <span class="dt">data =</span> collaborations) <span class="op">+</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_smooth</span>(</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a>    <span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>,</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true"></a>    <span class="dt">se =</span> <span class="ot">FALSE</span>,</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true"></a>    <span class="dt">col =</span> <span class="st">&quot;gray75&quot;</span>,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true"></a>    <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">.5</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.8</span>) <span class="op">+</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="dv">5</span>,</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">2</span>,</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true"></a>    <span class="dt">segment.alpha =</span> <span class="fl">0.5</span>,</span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">.5</span>),</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span>,</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_x_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-3</span>)) <span class="op">+</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(</span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true"></a>    <span class="dt">title =</span> <span class="st">&quot;H2020 Contributions and Collaborations&quot;</span>,</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true"></a>    <span class="dt">subtitle =</span> <span class="st">&quot;Shown in log-log scale&quot;</span>,</span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true"></a>    <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS, World Bank&quot;</span>,</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="kw">element_blank</span>(),</span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true"></a>    <span class="dt">x =</span> <span class="st">&quot;No. Collaborations (k)&quot;</span>,</span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true"></a>    <span class="dt">y =</span> <span class="st">&quot;Total Contribution (mioEUR)&quot;</span></span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true"></a>  ) <span class="op">+</span></span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb18-31"><a href="#cb18-31" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
+<span id="cb18-32"><a href="#cb18-32" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
+<span id="cb18-33"><a href="#cb18-33" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">1</span>, <span class="fl">.96</span>),</span>
+<span id="cb18-34"><a href="#cb18-34" aria-hidden="true"></a>    <span class="dt">legend.direction =</span> <span class="st">&quot;horizontal&quot;</span>,</span>
+<span id="cb18-35"><a href="#cb18-35" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">4</span>, <span class="st">&quot;mm&quot;</span>),</span>
+<span id="cb18-36"><a href="#cb18-36" aria-hidden="true"></a>    <span class="dt">legend.background =</span> <span class="kw">element_rect</span>(</span>
+<span id="cb18-37"><a href="#cb18-37" aria-hidden="true"></a>      <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
+<span id="cb18-38"><a href="#cb18-38" aria-hidden="true"></a>      <span class="dt">fill =</span> <span class="kw">alpha</span>(<span class="st">&quot;white&quot;</span>, <span class="dv">1</span>),</span>
+<span id="cb18-39"><a href="#cb18-39" aria-hidden="true"></a>      <span class="dt">color =</span> <span class="kw">alpha</span>(<span class="st">&quot;black&quot;</span>, <span class="fl">0.25</span>)</span>
+<span id="cb18-40"><a href="#cb18-40" aria-hidden="true"></a>    )</span>
+<span id="cb18-41"><a href="#cb18-41" aria-hidden="true"></a>  )</span></code></pre></div>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="864" /></p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="kw">ggplot</span>(<span class="kw">aes</span>(n, contrib, <span class="dt">label =</span> country_name, <span class="dt">col =</span> status),</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>       <span class="dt">data =</span> collaborations) <span class="op">+</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_smooth</span>(</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>    <span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>,</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>    <span class="dt">se =</span> <span class="ot">FALSE</span>,</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>    <span class="dt">col =</span> <span class="st">&quot;gray75&quot;</span>,</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>    <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="fl">.5</span></span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">size =</span> <span class="dv">3</span>, <span class="dt">alpha =</span> <span class="fl">.8</span>) <span class="op">+</span></span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a><span class="st">  </span><span class="kw">geom_text_repel</span>(</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a>    <span class="dt">size =</span> <span class="dv">5</span>,</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a>    <span class="dt">force =</span> <span class="dv">2</span>,</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>    <span class="dt">segment.alpha =</span> <span class="fl">0.5</span>,</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a>    <span class="dt">bg.color =</span> <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">.5</span>),</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a>    <span class="dt">bg.r =</span> <span class="fl">0.15</span>,</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a>    <span class="dt">show.legend =</span> <span class="ot">FALSE</span></span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_color_manual</span>(<span class="dt">values =</span> colorhunt) <span class="op">+</span></span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_x_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-3</span>)) <span class="op">+</span></span>
-<span id="cb13-21"><a href="#cb13-21" aria-hidden="true"></a><span class="st">  </span><span class="kw">scale_y_log10</span>(<span class="dt">labels =</span> <span class="kw">label_number</span>(<span class="dt">accuracy =</span> <span class="dv">1</span>, <span class="dt">scale =</span> <span class="fl">1e-6</span>)) <span class="op">+</span></span>
-<span id="cb13-22"><a href="#cb13-22" aria-hidden="true"></a><span class="st">  </span><span class="kw">labs</span>(</span>
-<span id="cb13-23"><a href="#cb13-23" aria-hidden="true"></a>    <span class="dt">title =</span> <span class="st">&quot;H2020 Contributions and Collaborations&quot;</span>,</span>
-<span id="cb13-24"><a href="#cb13-24" aria-hidden="true"></a>    <span class="dt">subtitle =</span> <span class="st">&quot;Shown in log-log scale&quot;</span>,</span>
-<span id="cb13-25"><a href="#cb13-25" aria-hidden="true"></a>    <span class="dt">caption =</span> <span class="st">&quot;Source: CORDIS, World Bank&quot;</span>,</span>
-<span id="cb13-26"><a href="#cb13-26" aria-hidden="true"></a>    <span class="dt">color =</span> <span class="kw">element_blank</span>(),</span>
-<span id="cb13-27"><a href="#cb13-27" aria-hidden="true"></a>    <span class="dt">x =</span> <span class="st">&quot;No. Collaborations (k)&quot;</span>,</span>
-<span id="cb13-28"><a href="#cb13-28" aria-hidden="true"></a>    <span class="dt">y =</span> <span class="st">&quot;Total Contribution (mioEUR)&quot;</span></span>
-<span id="cb13-29"><a href="#cb13-29" aria-hidden="true"></a>  ) <span class="op">+</span></span>
-<span id="cb13-30"><a href="#cb13-30" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
-<span id="cb13-31"><a href="#cb13-31" aria-hidden="true"></a><span class="st">  </span><span class="kw">theme</span>(</span>
-<span id="cb13-32"><a href="#cb13-32" aria-hidden="true"></a>    <span class="dt">plot.title.position =</span> <span class="st">&quot;plot&quot;</span>,</span>
-<span id="cb13-33"><a href="#cb13-33" aria-hidden="true"></a>    <span class="dt">legend.position =</span> <span class="kw">c</span>(.<span class="dv">1</span>, <span class="fl">.96</span>),</span>
-<span id="cb13-34"><a href="#cb13-34" aria-hidden="true"></a>    <span class="dt">legend.direction =</span> <span class="st">&quot;horizontal&quot;</span>,</span>
-<span id="cb13-35"><a href="#cb13-35" aria-hidden="true"></a>    <span class="dt">legend.key.size =</span> <span class="kw">unit</span>(<span class="dv">4</span>, <span class="st">&quot;mm&quot;</span>),</span>
-<span id="cb13-36"><a href="#cb13-36" aria-hidden="true"></a>    <span class="dt">legend.background =</span> <span class="kw">element_rect</span>(</span>
-<span id="cb13-37"><a href="#cb13-37" aria-hidden="true"></a>      <span class="dt">linetype =</span> <span class="st">&quot;dotted&quot;</span>,</span>
-<span id="cb13-38"><a href="#cb13-38" aria-hidden="true"></a>      <span class="dt">fill =</span> <span class="kw">alpha</span>(<span class="st">&quot;white&quot;</span>, <span class="dv">1</span>),</span>
-<span id="cb13-39"><a href="#cb13-39" aria-hidden="true"></a>      <span class="dt">color =</span> <span class="kw">alpha</span>(<span class="st">&quot;black&quot;</span>, <span class="fl">0.25</span>)</span>
-<span id="cb13-40"><a href="#cb13-40" aria-hidden="true"></a>    )</span>
-<span id="cb13-41"><a href="#cb13-41" aria-hidden="true"></a>  )</span></code></pre></div>
-<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" width="864" /></p>
 </div>
 
 

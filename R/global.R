@@ -11,3 +11,10 @@ list_to_df <- function(x, column_names) {
   }
   return(res)
 }
+
+
+country_selection <- yaml::read_yaml(here::here("data", "countries.yml"))
+programme_parts <- yaml::read_yaml(here::here("data", "cordis-programmes.yml"))
+
+info_country <- list_to_df(country_selection, c("country", "group"))
+info_programmes <- list_to_df(programme_parts, c("programme_slug", "programme_part"))

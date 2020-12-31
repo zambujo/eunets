@@ -18,6 +18,7 @@ License: What license it uses
 Depends: 
     assertthat,
     countrycode,
+    DT,
     glue,
     here,
     igraph,
@@ -32,6 +33,7 @@ Remotes:
     nset-ornl/wbstats,
     slowkow/ggrepel
 Suggests: 
+    conflicted,
     rmarkdown
 Encoding: UTF-8
 LazyData: true
