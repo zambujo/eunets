@@ -22,7 +22,11 @@ editor_options:
 ```{r, include=FALSE}
 ## run `R/gather.R` to update the data
 ## run `R/clean.R` to prepare the data
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  message = FALSE,
+  warning = FALSE,
+  comment = FALSE)
 ```
 
 ## Goal
